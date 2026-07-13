@@ -50,7 +50,11 @@ export async function findWorkshops(
   if (filter.von) conditions.push(gte(workshop.termin1, filter.von));
   if (filter.bis) conditions.push(lte(workshop.termin1, filter.bis));
   if (filter.suche) {
-    const muster = `%${filter.suche.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+    // Escape the escape char first, then the ILIKE wildcards.
+    const muster = `%${filter.suche
+      .replaceAll("\\", "\\\\")
+      .replaceAll("%", "\\%")
+      .replaceAll("_", "\\_")}%`;
     conditions.push(
       or(ilike(workshop.name, muster), ilike(kunde.firma, muster)),
     );

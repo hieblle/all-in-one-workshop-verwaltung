@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { trainer } from "@/db/schema";
@@ -18,7 +18,12 @@ export async function updateVerfuegbarkeitAction(
   await db
     .update(trainer)
     .set({ verfuegbarkeitNotiz: daten.verfuegbarkeitNotiz || null })
-    .where(eq(trainer.nutzerId, session.user.nutzerId ?? -1));
+    .where(
+      and(
+        eq(trainer.nutzerId, session.user.nutzerId ?? -1),
+        eq(trainer.aktiv, true),
+      ),
+    );
 
   revalidatePath("/");
 }

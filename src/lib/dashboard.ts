@@ -120,7 +120,9 @@ export async function getTeamDashboard(
     )
     .orderBy(asc(workshop.termin1));
 
-  // Active workshops (offer accepted or later) with no trainer at all.
+  // Workshops in the offer-to-delivery window with no trainer at all —
+  // deliberately without Nachbereitung: the nudge only matters before/during
+  // delivery.
   const ohneTrainer = await db
     .select({
       id: workshop.id,
@@ -177,13 +179,15 @@ export async function getTrainerDashboard(
 ): Promise<TrainerDashboard> {
   const nutzerId = session.user.nutzerId ?? -1;
 
+  // aktiv-guard mirrors assertTrainerAccess: a deactivated trainer must see
+  // nothing here either — this page must not bypass the revocation mechanism.
   const [eigenerTrainer] = await db
     .select({
       id: trainer.id,
       verfuegbarkeitNotiz: trainer.verfuegbarkeitNotiz,
     })
     .from(trainer)
-    .where(eq(trainer.nutzerId, nutzerId))
+    .where(and(eq(trainer.nutzerId, nutzerId), eq(trainer.aktiv, true)))
     .limit(1);
 
   const meineWorkshops = eigenerTrainer
@@ -208,15 +212,17 @@ export async function getTrainerDashboard(
         .orderBy(sql`${workshop.termin1} ASC NULLS LAST`)
     : [];
 
-  const meinePunkte = await offenePunkteQuery()
-    .where(
-      and(
-        eq(checkpunkt.status, "offen"),
-        eq(checkpunkt.verantwortlichUserId, nutzerId),
-        ne(workshop.status, "On-Hold/Abgesagt"),
-      ),
-    )
-    .orderBy(sql`${checkpunkt.faelligAm} ASC NULLS LAST`);
+  const meinePunkte = eigenerTrainer
+    ? await offenePunkteQuery()
+        .where(
+          and(
+            eq(checkpunkt.status, "offen"),
+            eq(checkpunkt.verantwortlichUserId, nutzerId),
+            ne(workshop.status, "On-Hold/Abgesagt"),
+          ),
+        )
+        .orderBy(sql`${checkpunkt.faelligAm} ASC NULLS LAST`)
+    : [];
 
   return {
     trainerId: eigenerTrainer?.id ?? null,

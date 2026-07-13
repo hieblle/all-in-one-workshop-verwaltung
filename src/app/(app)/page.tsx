@@ -18,35 +18,37 @@ import { updateVerfuegbarkeitAction } from "./actions";
 function PunktListe({
   punkte,
   leerText,
-  ueberfaellig = false,
 }: {
   punkte: PunktEintrag[];
   leerText: string;
-  ueberfaellig?: boolean;
 }) {
+  const jetzt = new Date();
   if (punkte.length === 0) {
     return <p className="text-sm text-zinc-500">{leerText}</p>;
   }
   return (
     <ul className="divide-y divide-zinc-100 rounded-md border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
-      {punkte.map((p) => (
-        <li key={p.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
-          <div className="min-w-0">
-            <p className="font-medium">{p.titel}</p>
-            <p className="text-xs text-zinc-500">
-              <Link href={`/workshops/${p.workshopId}`} className="hover:underline">
-                {p.workshopName}
-              </Link>
-              {p.verantwortlichName ? ` · ${p.verantwortlichName}` : " · niemand zugewiesen"}
-            </p>
-          </div>
-          <span
-            className={`ml-auto whitespace-nowrap text-xs ${ueberfaellig ? "font-semibold text-red-600" : "text-zinc-500"}`}
-          >
-            {formatDatum(p.faelligAm)} ({tageBisLabel(p.faelligAm)})
-          </span>
-        </li>
-      ))}
+      {punkte.map((p) => {
+        const ueberfaellig = p.faelligAm !== null && p.faelligAm < jetzt;
+        return (
+          <li key={p.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+            <div className="min-w-0">
+              <p className="font-medium">{p.titel}</p>
+              <p className="text-xs text-zinc-500">
+                <Link href={`/workshops/${p.workshopId}`} className="hover:underline">
+                  {p.workshopName}
+                </Link>
+                {p.verantwortlichName ? ` · ${p.verantwortlichName}` : " · niemand zugewiesen"}
+              </p>
+            </div>
+            <span
+              className={`ml-auto whitespace-nowrap text-xs ${ueberfaellig ? "font-semibold text-red-600" : "text-zinc-500"}`}
+            >
+              {formatDatum(p.faelligAm)} ({tageBisLabel(p.faelligAm)})
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -84,7 +86,6 @@ export default async function DashboardPage() {
 
   if (!isTeamRolle(session.user.rolle)) {
     const daten = await getTrainerDashboard(session);
-    const heute = new Date();
     return (
       <div className="space-y-8">
         <h1 className="text-xl font-semibold">
@@ -98,9 +99,6 @@ export default async function DashboardPage() {
           <PunktListe
             punkte={daten.meinePunkte}
             leerText="Nichts offen — alles erledigt!"
-            ueberfaellig={daten.meinePunkte.some(
-              (p) => p.faelligAm !== null && p.faelligAm < heute,
-            )}
           />
         </section>
 
@@ -113,6 +111,7 @@ export default async function DashboardPage() {
           )}
         </section>
 
+        {daten.trainerId !== null && (
         <section className="space-y-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
           <h2 className="font-medium">Deine Verfügbarkeit</h2>
           <p className="text-xs text-zinc-500">
@@ -133,6 +132,7 @@ export default async function DashboardPage() {
             </button>
           </form>
         </section>
+        )}
       </div>
     );
   }
@@ -171,7 +171,6 @@ export default async function DashboardPage() {
         <PunktListe
           punkte={daten.ueberfaellig}
           leerText="Nichts überfällig — sehr gut!"
-          ueberfaellig
         />
       </section>
 

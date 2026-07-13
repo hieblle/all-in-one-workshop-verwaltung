@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
-import { nutzer, type Nutzer } from "@/db/schema";
+import { nutzer, trainer, type Nutzer } from "@/db/schema";
 
 export const MAGIC_LINK_TTL_MINUTES = 30;
 
@@ -44,6 +44,17 @@ export async function createMagicLinkToken(
     .limit(1);
 
   if (!account) return null;
+
+  // Trainer logins require an ACTIVE trainer profile: deactivating the
+  // trainer record (aktiv = false) is the mechanism to revoke access.
+  if (account.rolle === "trainer") {
+    const [aktiverTrainer] = await db
+      .select({ id: trainer.id })
+      .from(trainer)
+      .where(and(eq(trainer.nutzerId, account.id), eq(trainer.aktiv, true)))
+      .limit(1);
+    if (!aktiverTrainer) return null;
+  }
 
   const rawToken = generateRawToken();
   await db
