@@ -10,8 +10,9 @@ if (process.env.NODE_ENV === "development") {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // PGlite ships WASM assets that must not be bundled into the server build.
-  serverExternalPackages: ["@electric-sql/pglite"],
+  // PGlite ships WASM assets that must not be bundled into the server build;
+  // pg-boss loads SQL files at runtime.
+  serverExternalPackages: ["@electric-sql/pglite", "pg-boss"],
 };
 
 export default nextConfig;
