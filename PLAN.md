@@ -83,17 +83,21 @@ Vorbild: bestehende Notion-DB "Workshop Liste" (bewährte Felder übernehmen).
 ## 5. Kernfeatures
 
 ### F1 Checklisten-Engine ⭐ (Herzstück, Phase 1)
-- [ ] Vorlagen-Verwaltung (CRUD) je Workshop-Typ und Phase
-- [ ] Auto-Instanziierung der Punkte bei Workshop-Anlage / Statuswechsel
-- [ ] Delegation: Verantwortlicher pro Punkt, Fälligkeit relativ zum Termin
-- [ ] Erinnerungs-Job (pg-boss): Mail an Verantwortlichen bei Fälligkeit,
+- [x] Vorlagen-Verwaltung (CRUD) je Workshop-Typ und Phase
+- [x] Auto-Instanziierung der Punkte bei Workshop-Anlage / Statuswechsel
+- [x] Delegation: Verantwortlicher pro Punkt, Fälligkeit relativ zum Termin
+- [x] Erinnerungs-Job (pg-boss): Mail an Verantwortlichen bei Fälligkeit,
       Eskalation an Lead bei Überfälligkeit > 2 Tage
+      (Mails laufen bis zum Graph-Admin-Consent aus Phase 2 über den
+      Log-Stub — Versand wird dann ohne Code-Änderung am Job scharf)
 - [ ] Auto-Check-Regeln (Phase 2, sobald Integrationen stehen)
 
 ### F2 Workshop-Verwaltung (Phase 1)
-- [ ] Listen-/Board-Ansicht mit Filtern (Status, Type, Trainer, Zeitraum)
-- [ ] Workshop-Detailseite: Stammdaten, Termine, Links, Checkliste, Thread, Trainer
+- [x] Listen-/Board-Ansicht mit Filtern (Status, Type, Trainer, Zeitraum)
+- [x] Workshop-Detailseite: Stammdaten, Termine, Links, Checkliste, Thread, Trainer
 - [ ] Datenimport aus Notion "Workshop Liste" (einmalig, per Notion API)
+      (Skript fertig: `npm run import:notion` mit Dry-Run — Ausführung mit
+      echten Notion-Credentials steht aus)
 
 ### F3 Sync-Out (Phase 2)
 - [ ] Outlook: Kalendereinträge für Termine 1/2/FUP aller Beteiligten (Graph API)
@@ -131,9 +135,9 @@ Vorbild: bestehende Notion-DB "Workshop Liste" (bewährte Felder übernehmen).
 - [x] .env.example, README, CI (typecheck + lint + test)
 
 ### Phase 1 — Workshop-Hub (Woche 3–7)
-- [ ] F2 Workshop-Verwaltung komplett
-- [ ] F1 Checklisten-Engine (ohne Auto-Checks)
-- [ ] Notion-Import der bestehenden Workshops
+- [x] F2 Workshop-Verwaltung komplett
+- [x] F1 Checklisten-Engine (ohne Auto-Checks)
+- [ ] Notion-Import der bestehenden Workshops (Skript fertig, Lauf steht aus)
 - [ ] Go-Live intern: Notion "Workshop Liste" einfrieren
 
 ### Phase 2 — Integrationen & Trainer (Woche 8–12)
