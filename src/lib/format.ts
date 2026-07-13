@@ -36,6 +36,20 @@ export function zuInputWert(datum: Date | null): string {
   return `${datum.getFullYear()}-${pad(datum.getMonth() + 1)}-${pad(datum.getDate())}T${pad(datum.getHours())}:${pad(datum.getMinutes())}`;
 }
 
+export function tageBisLabel(datum: Date | null, now: Date = new Date()): string {
+  if (!datum) return "ohne Termin";
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const ziel = new Date(datum);
+  ziel.setHours(0, 0, 0, 0);
+  const tage = Math.round((ziel.getTime() - start.getTime()) / 86_400_000);
+  if (tage === 0) return "heute";
+  if (tage === 1) return "morgen";
+  if (tage === -1) return "gestern";
+  if (tage < 0) return `vor ${-tage} Tagen`;
+  return `in ${tage} Tagen`;
+}
+
 // Board column order mirrors the process flow from the Notion template.
 export const STATUS_REIHENFOLGE: WorkshopStatus[] = [
   "Vorabstimmung",

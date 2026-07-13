@@ -13,8 +13,14 @@ export default async function AppLayout({
     <div className="min-h-screen">
       <header className="border-b border-zinc-200 dark:border-zinc-800">
         <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Link href="/workshops" className="font-semibold">
+          <Link href="/" className="font-semibold">
             dbrains Workshop-Hub
+          </Link>
+          <Link
+            href="/"
+            className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          >
+            Dashboard
           </Link>
           <Link
             href="/workshops"
@@ -23,12 +29,26 @@ export default async function AppLayout({
             Workshops
           </Link>
           {istTeam && (
-            <Link
-              href="/vorlagen"
-              className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-            >
-              Checklisten-Vorlagen
-            </Link>
+            <>
+              <Link
+                href="/vorlagen"
+                className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Vorlagen
+              </Link>
+              <Link
+                href="/team"
+                className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Team & Trainer
+              </Link>
+              <Link
+                href="/kunden"
+                className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Kunden
+              </Link>
+            </>
           )}
           <div className="ml-auto flex items-center gap-3 text-sm">
             <span className="text-zinc-600 dark:text-zinc-400">
