@@ -50,6 +50,15 @@ export default async function LoginPage({
           </h2>
           <MagicLinkForm />
         </section>
+
+        {process.env.NODE_ENV === "development" && (
+          <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+            Dev-Modus: Der Anmelde-Link funktioniert für alle Seed-Konten —
+            z.&nbsp;B. <code>leon@dbrains.academy</code> (Admin) oder{" "}
+            <code>trainerin@example.com</code> (Trainerin). Der Link erscheint
+            im Terminal des Dev-Servers.
+          </p>
+        )}
       </div>
     </main>
   );

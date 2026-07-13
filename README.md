@@ -14,31 +14,46 @@ werden angebunden. Vollständiger Plan: [PLAN.md](./PLAN.md), Arbeitsregeln:
   Magic Link (externe Trainer)
 - Deployment: Docker auf Hetzner via Coolify
 
-## Lokale Entwicklung
+## Schnellstart (Zero-Install — nur Node nötig)
 
 ```bash
-# 1. Abhängigkeiten
 npm install
+npm run dev             # → http://localhost:3000
+```
 
-# 2. Umgebung konfigurieren
+Mehr ist nicht nötig: Ohne `DATABASE_URL` startet die App im Dev-Modus mit
+einer **eingebetteten Datenbank** (PGlite, liegt in `.pglite/`), wendet die
+Migrationen automatisch an und spielt die Demo-Daten ein. Kein Docker, kein
+Postgres, keine `.env`.
+
+**Anmelden:** Auf der Login-Seite einen Magic-Link anfordern — im Dev-Modus
+für jedes Seed-Konto, z. B. `leon@dbrains.academy` (Admin) oder
+`trainerin@example.com` (Trainerin). Der Link erscheint **im Terminal des
+Dev-Servers** (Mail-Versand via Graph API kommt in Phase 2). Frischer Zustand:
+`.pglite/` löschen und neu starten.
+
+## Lokale Entwicklung mit echtem Postgres (produktionsnah)
+
+```bash
+# 1. Umgebung konfigurieren
 cp .env.example .env    # Werte eintragen, AUTH_SECRET: npx auth secret
 
-# 3. Postgres starten (z. B. via Docker)
+# 2. Postgres starten (z. B. via Docker)
 docker run -d --name workshop-hub-db -p 5432:5432 \
   -e POSTGRES_USER=workshop -e POSTGRES_PASSWORD=workshop \
   -e POSTGRES_DB=workshop_hub postgres:17-alpine
 
-# 4. Migrationen + Seed-Daten
+# 3. Migrationen + Seed-Daten
 npm run db:migrate
 npm run db:seed
 
-# 5. Dev-Server
+# 4. Dev-Server
 npm run dev
 ```
 
-Ohne Entra-App-Registrierung funktioniert lokal der Magic-Link-Flow: Link für
-`trainerin@example.com` (Seed) anfordern — er wird in der Server-Konsole
-geloggt (Mail-Versand via Graph API kommt in Phase 2).
+Sobald `DATABASE_URL` gesetzt ist, wird die eingebettete Datenbank ignoriert.
+In Produktion (`NODE_ENV=production`) gibt es keinen Fallback — dort ist ein
+echtes Postgres Pflicht.
 
 ## Befehle
 

@@ -26,14 +26,21 @@ export function isExpired(expiresAt: Date | null, now: Date = new Date()): boole
  * Creates a single-use magic link token for an external trainer account.
  * Returns null if no active trainer account exists for the email — callers
  * must not leak that difference to the client (no user enumeration).
+ *
+ * Development only: all roles may use the magic link, so the app can be
+ * tested as admin/team without an Entra ID app registration.
  */
 export async function createMagicLinkToken(
   email: string,
 ): Promise<{ nutzer: Nutzer; rawToken: string } | null> {
+  const nurTrainer =
+    process.env.NODE_ENV === "development"
+      ? undefined
+      : eq(nutzer.rolle, "trainer");
   const [account] = await db
     .select()
     .from(nutzer)
-    .where(and(eq(nutzer.email, email.toLowerCase()), eq(nutzer.rolle, "trainer")))
+    .where(and(eq(nutzer.email, email.toLowerCase()), nurTrainer))
     .limit(1);
 
   if (!account) return null;
