@@ -107,9 +107,12 @@ Vorbild: bestehende Notion-DB "Workshop Liste" (bewährte Felder übernehmen).
 ### F4 Trainer-Modul (Phase 2)
 - [ ] Zuweisung mit automatischem Info-Paket per Mail (Termin, Kunde,
       Ansprechperson, SharePoint-Links, Checklistenpunkte des Trainers)
-- [ ] Trainer-Portal (Magic Link, mobile-tauglich)
+- [x] Trainer-Portal (Magic Link, mobile-tauglich)
+      (seit MVP: eigenes Dashboard, zugewiesene Workshops, eigene
+      Checklistenpunkte, Thread — Feedback-Ansicht folgt mit F5)
 - [ ] Austausch-Thread pro Workshop, E-Mail-Benachrichtigung bei neuem Kommentar
-- [ ] Verfügbarkeiten als Selbstauskunft (bewusst KEIN Kalender-Sync)
+      (Thread live seit Phase 1 — Mail-Benachrichtigung wartet auf Graph-Consent)
+- [x] Verfügbarkeiten als Selbstauskunft (bewusst KEIN Kalender-Sync)
 
 ### F5 Sync-In / Auto-Checks (Phase 2)
 - [ ] MS Forms: Antworten pollen (Graph API) → Checkpunkt auto-erledigen
