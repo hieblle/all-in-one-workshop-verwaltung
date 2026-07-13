@@ -122,11 +122,13 @@ Vorbild: bestehende Notion-DB "Workshop Liste" (bewährte Felder übernehmen).
 ## 6. Roadmap
 
 ### Phase 0 — Fundament (Woche 1–2)
-- [ ] Next.js + TypeScript + Tailwind + Drizzle Setup, Repo-Struktur
-- [ ] Postgres-Schema (alle Tabellen aus §4) + Seed-Daten
-- [ ] Auth: Entra ID SSO + Magic-Link-Flow, Rollen-Middleware (assertTrainerAccess)
+- [x] Next.js + TypeScript + Tailwind + Drizzle Setup, Repo-Struktur
+- [x] Postgres-Schema (alle Tabellen aus §4) + Seed-Daten
+- [x] Auth: Entra ID SSO + Magic-Link-Flow, Rollen-Middleware (assertTrainerAccess)
 - [ ] Hetzner-Server + Coolify, Docker-Deploy, tägliche DB-Backups
-- [ ] .env.example, README, CI (typecheck + lint + test)
+      (App-seitig fertig: Dockerfile, docker-compose, Backup-Skript, Doku in
+      README — Server-Provisionierung + Coolify-Einrichtung stehen aus)
+- [x] .env.example, README, CI (typecheck + lint + test)
 
 ### Phase 1 — Workshop-Hub (Woche 3–7)
 - [ ] F2 Workshop-Verwaltung komplett
