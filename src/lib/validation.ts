@@ -1,6 +1,30 @@
 import { z } from "zod";
+import {
+  autoCheckRegelEnum,
+  checkpunktStatusEnum,
+  verantwortlichRolleEnum,
+  workshopFormatEnum,
+  workshopModusEnum,
+  workshopStatusEnum,
+  workshopTypeEnum,
+  zuweisungRolleEnum,
+} from "@/db/schema";
 
 // Zod schemas for API boundaries (routes, server actions, webhooks).
+
+const leerZuUndefined = (v: unknown) =>
+  typeof v === "string" && v.trim() === "" ? undefined : v;
+
+const optionalerText = z.preprocess(
+  leerZuUndefined,
+  z.string().trim().max(500).optional(),
+);
+const optionaleUrl = z.preprocess(leerZuUndefined, z.url().optional());
+const optionalesDatum = z.preprocess(
+  leerZuUndefined,
+  z.coerce.date().optional(),
+);
+
 export const magicLinkRequestSchema = z.object({
   email: z.email(),
 });
@@ -9,3 +33,104 @@ export const magicLinkRequestSchema = z.object({
 export const magicLinkTokenSchema = z
   .string()
   .regex(/^[0-9a-f]{64}$/);
+
+export const idSchema = z.coerce.number().int().positive();
+
+export const workshopFormSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    kundeId: z.preprocess(leerZuUndefined, idSchema.optional()),
+    neueFirma: optionalerText,
+    ansprechperson: optionalerText,
+    type: z.enum(workshopTypeEnum.enumValues),
+    format: z.preprocess(
+      leerZuUndefined,
+      z.enum(workshopFormatEnum.enumValues).optional(),
+    ),
+    modus: z.preprocess(
+      leerZuUndefined,
+      z.enum(workshopModusEnum.enumValues).optional(),
+    ),
+    status: z.enum(workshopStatusEnum.enumValues).default("Vorabstimmung"),
+    termin1: optionalesDatum,
+    termin2: optionalesDatum,
+    terminFup: optionalesDatum,
+    wsBetrag: z.preprocess(
+      leerZuUndefined,
+      z
+        .string()
+        .trim()
+        .regex(/^\d+([.,]\d{1,2})?$/, "Betrag im Format 1234.56")
+        .transform((v) => v.replace(",", "."))
+        .optional(),
+    ),
+    sharepointUrl: optionaleUrl,
+    notionProjectUrl: optionaleUrl,
+    formsVorabUrl: optionaleUrl,
+    formsFeedbackUrl: optionaleUrl,
+    teamsMeetingUrl: optionaleUrl,
+    verwendetesSlidedeck: optionaleUrl,
+    sevdeskId: optionalerText,
+  })
+  .refine((d) => d.kundeId !== undefined || d.neueFirma !== undefined, {
+    message: "Kunde auswählen oder neue Firma angeben",
+    path: ["kundeId"],
+  });
+
+export const workshopStatusFormSchema = z.object({
+  status: z.enum(workshopStatusEnum.enumValues),
+});
+
+export const zuweisungFormSchema = z.object({
+  trainerId: idSchema,
+  rolle: z.enum(zuweisungRolleEnum.enumValues),
+});
+
+export const kommentarFormSchema = z.object({
+  text: z.string().trim().min(1).max(5000),
+});
+
+export const checkpunktStatusFormSchema = z.object({
+  status: z.enum(checkpunktStatusEnum.enumValues),
+});
+
+export const checkpunktZuweisungFormSchema = z.object({
+  verantwortlichUserId: z.preprocess(leerZuUndefined, idSchema.optional()),
+});
+
+export const vorlageFormSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  giltFuerType: z.preprocess(
+    leerZuUndefined,
+    z.enum(workshopTypeEnum.enumValues).optional(),
+  ),
+});
+
+export const punktFormSchema = z.object({
+  titel: z.string().trim().min(1).max(300),
+  phase: z.enum(workshopStatusEnum.enumValues),
+  verantwortlichRolle: z.enum(verantwortlichRolleEnum.enumValues),
+  faelligOffsetTage: z.coerce.number().int().min(-365).max(365),
+  autoCheckRegel: z.preprocess(
+    leerZuUndefined,
+    z.enum(autoCheckRegelEnum.enumValues).optional(),
+  ),
+});
+
+export const workshopFilterSchema = z.object({
+  status: z.preprocess(
+    leerZuUndefined,
+    z.enum(workshopStatusEnum.enumValues).optional(),
+  ),
+  type: z.preprocess(
+    leerZuUndefined,
+    z.enum(workshopTypeEnum.enumValues).optional(),
+  ),
+  trainer: z.preprocess(leerZuUndefined, idSchema.optional()),
+  von: optionalesDatum,
+  bis: optionalesDatum,
+  ansicht: z.preprocess(
+    leerZuUndefined,
+    z.enum(["liste", "board"]).default("liste"),
+  ),
+});
