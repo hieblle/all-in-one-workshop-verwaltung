@@ -44,6 +44,7 @@ export default async function WorkshopsPage({
     trainerId: filter.trainer,
     von: filter.von,
     bis: filter.bis,
+    suche: filter.suche,
   });
 
   const alleTrainer = istTeam
@@ -72,6 +73,16 @@ export default async function WorkshopsPage({
           method="get"
           className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
         >
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-zinc-500">Suche</span>
+            <input
+              type="search"
+              name="suche"
+              defaultValue={filter.suche ?? ""}
+              placeholder="Name oder Kunde"
+              className="rounded-md border border-zinc-300 px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900"
+            />
+          </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs text-zinc-500">Status</span>
             <select
