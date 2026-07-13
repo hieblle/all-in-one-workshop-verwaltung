@@ -63,7 +63,8 @@ export const checkpunktVorlage = pgTable("checkpunkt_vorlage", {
 
 // Instantiated checklist item per workshop. The unique index keeps the
 // instantiation on status changes idempotent (F1: re-entering a phase must
-// not duplicate items).
+// not duplicate items). Ad-hoc items have no vorlage_punkt_id and carry
+// their own titel/phase instead.
 export const checkpunkt = pgTable(
   "checkpunkt",
   {
@@ -71,9 +72,11 @@ export const checkpunkt = pgTable(
     workshopId: integer("workshop_id")
       .notNull()
       .references(() => workshop.id, { onDelete: "cascade" }),
-    vorlagePunktId: integer("vorlage_punkt_id")
-      .notNull()
-      .references(() => checkpunktVorlage.id),
+    vorlagePunktId: integer("vorlage_punkt_id").references(
+      () => checkpunktVorlage.id,
+    ),
+    titel: text("titel"),
+    phase: workshopStatusEnum("phase"),
     verantwortlichUserId: integer("verantwortlich_user_id").references(
       () => nutzer.id,
     ),

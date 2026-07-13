@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, exists, gte, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, gte, ilike, lte, or, sql } from "drizzle-orm";
 import type { Session } from "next-auth";
 import { db } from "@/db";
 import {
@@ -21,6 +21,7 @@ export interface WorkshopFilter {
   trainerId?: number;
   von?: Date;
   bis?: Date;
+  suche?: string;
 }
 
 export interface WorkshopListEintrag {
@@ -48,6 +49,12 @@ export async function findWorkshops(
   if (filter.type) conditions.push(eq(workshop.type, filter.type));
   if (filter.von) conditions.push(gte(workshop.termin1, filter.von));
   if (filter.bis) conditions.push(lte(workshop.termin1, filter.bis));
+  if (filter.suche) {
+    const muster = `%${filter.suche.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+    conditions.push(
+      or(ilike(workshop.name, muster), ilike(kunde.firma, muster)),
+    );
+  }
   if (filter.trainerId) {
     conditions.push(
       exists(
@@ -173,11 +180,13 @@ export async function getWorkshopDetail(
     );
   }
 
+  // Ad-hoc items carry their own titel/phase; template items fall back to
+  // the vorlage values — hence left join + coalesce.
   const checkpunkte = await db
     .select({
       id: checkpunkt.id,
-      titel: checkpunktVorlage.titel,
-      phase: checkpunktVorlage.phase,
+      titel: sql<string>`coalesce(${checkpunkt.titel}, ${checkpunktVorlage.titel})`,
+      phase: sql<WorkshopStatus>`coalesce(${checkpunkt.phase}, ${checkpunktVorlage.phase})`,
       faelligAm: checkpunkt.faelligAm,
       status: checkpunkt.status,
       erledigtVia: checkpunkt.erledigtVia,
@@ -185,7 +194,7 @@ export async function getWorkshopDetail(
       verantwortlichName: nutzer.name,
     })
     .from(checkpunkt)
-    .innerJoin(
+    .leftJoin(
       checkpunktVorlage,
       eq(checkpunkt.vorlagePunktId, checkpunktVorlage.id),
     )

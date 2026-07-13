@@ -244,6 +244,19 @@ export function WorkshopForm({
         </label>
       </section>
 
+      <section>
+        <label className={labelKlasse}>
+          Interne Notizen{" "}
+          <span className={hinweisKlasse}>(für Trainer nicht sichtbar)</span>
+          <textarea
+            name="interneNotizen"
+            rows={4}
+            defaultValue={workshop?.interneNotizen ?? ""}
+            className={inputKlasse}
+          />
+        </label>
+      </section>
+
       <button
         type="submit"
         className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"

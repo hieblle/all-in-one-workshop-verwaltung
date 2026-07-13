@@ -86,6 +86,8 @@ export const workshop = pgTable("workshop", {
   sevdeskId: text("sevdesk_id"),
   teamsMeetingUrl: text("teams_meeting_url"),
   verwendetesSlidedeck: text("verwendetes_slidedeck"),
+  // Internal notes are team-only — never expose them to trainer roles (§3).
+  interneNotizen: text("interne_notizen"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

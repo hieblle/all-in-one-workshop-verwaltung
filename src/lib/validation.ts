@@ -2,6 +2,9 @@ import { z } from "zod";
 import {
   autoCheckRegelEnum,
   checkpunktStatusEnum,
+  nutzerRolleEnum,
+  rechnungStatusEnum,
+  trainerReStatusEnum,
   verantwortlichRolleEnum,
   workshopFormatEnum,
   workshopModusEnum,
@@ -71,6 +74,10 @@ export const workshopFormSchema = z
     teamsMeetingUrl: optionaleUrl,
     verwendetesSlidedeck: optionaleUrl,
     sevdeskId: optionalerText,
+    interneNotizen: z.preprocess(
+      leerZuUndefined,
+      z.string().trim().max(10000).optional(),
+    ),
   })
   .refine((d) => d.kundeId !== undefined || d.neueFirma !== undefined, {
     message: "Kunde auswählen oder neue Firma angeben",
@@ -129,8 +136,55 @@ export const workshopFilterSchema = z.object({
   trainer: z.preprocess(leerZuUndefined, idSchema.optional()),
   von: optionalesDatum,
   bis: optionalesDatum,
+  suche: z.preprocess(leerZuUndefined, z.string().trim().max(200).optional()),
   ansicht: z.preprocess(
     leerZuUndefined,
     z.enum(["liste", "board"]).default("liste"),
   ),
+});
+
+// FormData checkboxes arrive as "on" or are absent entirely.
+const checkbox = z.preprocess((v) => v === "on" || v === "true", z.boolean());
+
+const kleingeschriebeneEmail = z.email().transform((v) => v.toLowerCase());
+
+export const adhocPunktFormSchema = z.object({
+  titel: z.string().trim().min(1).max(300),
+  faelligAm: optionalesDatum,
+  verantwortlichUserId: z.preprocess(leerZuUndefined, idSchema.optional()),
+});
+
+export const rechnungFormSchema = z.object({
+  rechnungStatus: z.enum(rechnungStatusEnum.enumValues),
+  trainerRe: z.enum(trainerReStatusEnum.enumValues),
+});
+
+export const trainerFormSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  email: kleingeschriebeneEmail,
+  extern: checkbox,
+  verfuegbarkeitNotiz: optionalerText,
+  mitLogin: checkbox,
+});
+
+export const trainerUpdateFormSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  email: kleingeschriebeneEmail,
+  extern: checkbox,
+  aktiv: checkbox,
+  verfuegbarkeitNotiz: optionalerText,
+});
+
+export const nutzerFormSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  email: kleingeschriebeneEmail,
+  rolle: z.enum(nutzerRolleEnum.enumValues),
+});
+
+export const kundeFormSchema = z.object({
+  firma: z.string().trim().min(1).max(200),
+});
+
+export const verfuegbarkeitFormSchema = z.object({
+  verfuegbarkeitNotiz: z.string().trim().max(500),
 });

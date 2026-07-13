@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/db";
-import { nutzer, trainer, workshopStatusEnum } from "@/db/schema";
+import {
+  nutzer,
+  rechnungStatusEnum,
+  trainer,
+  trainerReStatusEnum,
+  workshopStatusEnum,
+} from "@/db/schema";
 import { AccessDeniedError, isTeamRolle } from "@/lib/access";
 import {
   formatBetrag,
@@ -14,12 +20,15 @@ import { requireSession } from "@/lib/session";
 import { idSchema } from "@/lib/validation";
 import { getWorkshopDetail, type WorkshopDetail } from "@/lib/workshops";
 import {
+  addAdhocCheckpunktAction,
   addKommentarAction,
   addZuweisungAction,
   assignCheckpunktAction,
   changeStatusAction,
+  deleteCheckpunktAction,
   removeZuweisungAction,
   setCheckpunktStatusAction,
+  updateRechnungAction,
 } from "../actions";
 
 const ZUWEISUNG_ROLLE_LABEL: Record<string, string> = {
@@ -56,7 +65,7 @@ function Checkliste({
     detail.checkpunkte.some((p) => p.phase === phase),
   );
 
-  if (detail.checkpunkte.length === 0) {
+  if (detail.checkpunkte.length === 0 && !istTeam) {
     return (
       <p className="text-sm text-zinc-500">
         Noch keine Checklistenpunkte — sie entstehen automatisch beim
@@ -67,6 +76,12 @@ function Checkliste({
 
   return (
     <div className="space-y-4">
+      {detail.checkpunkte.length === 0 && (
+        <p className="text-sm text-zinc-500">
+          Noch keine Checklistenpunkte — sie entstehen automatisch beim
+          Statuswechsel aus den Vorlagen, oder du legst unten eigene an.
+        </p>
+      )}
       {phasen.map((phase) => (
         <div key={phase}>
           <h3 className="mb-1 text-xs font-semibold text-zinc-500">{phase}</h3>
@@ -195,6 +210,23 @@ function Checkliste({
                           </button>
                         </form>
                       )}
+                      {istTeam && (
+                        <form
+                          action={deleteCheckpunktAction.bind(
+                            null,
+                            detail.workshop.id,
+                            punkt.id,
+                          )}
+                        >
+                          <button
+                            type="submit"
+                            title="Punkt löschen"
+                            className="rounded px-1 text-xs text-zinc-400 hover:text-red-600"
+                          >
+                            ✕
+                          </button>
+                        </form>
+                      )}
                     </span>
                   </li>
                 );
@@ -202,6 +234,51 @@ function Checkliste({
           </ul>
         </div>
       ))}
+
+      {istTeam && (
+        <details>
+          <summary className="cursor-pointer text-sm text-zinc-600 hover:underline dark:text-zinc-400">
+            + Eigenen Punkt hinzufügen
+          </summary>
+          <form
+            action={addAdhocCheckpunktAction.bind(null, detail.workshop.id)}
+            className="mt-2 flex flex-wrap items-center gap-2 text-sm"
+          >
+            <input
+              name="titel"
+              required
+              placeholder="Was ist zu tun?"
+              className="w-64 rounded-md border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+            />
+            <label className="flex items-center gap-1 text-xs text-zinc-500">
+              fällig am
+              <input
+                type="datetime-local"
+                name="faelligAm"
+                className="rounded-md border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </label>
+            <select
+              name="verantwortlichUserId"
+              defaultValue=""
+              className="rounded-md border border-zinc-300 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+            >
+              <option value="">– niemand –</option>
+              {alleNutzer.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-500"
+            >
+              Hinzufügen
+            </button>
+          </form>
+        </details>
+      )}
     </div>
   );
 }
@@ -331,17 +408,61 @@ export default async function WorkshopDetailPage({
               <dt className="text-xs text-zinc-500">Betrag</dt>
               <dd>{formatBetrag(ws.wsBetrag)}</dd>
             </div>
-            <div>
-              <dt className="text-xs text-zinc-500">Rechnung</dt>
-              <dd>{ws.rechnungStatus}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-zinc-500">Trainer-RE</dt>
-              <dd>{ws.trainerRe}</dd>
+            <div className="col-span-2 sm:col-span-2 lg:col-span-3">
+              <dt className="text-xs text-zinc-500">Rechnung / Trainer-RE</dt>
+              <dd>
+                <form
+                  action={updateRechnungAction.bind(null, ws.id)}
+                  className="mt-1 flex flex-wrap items-center gap-2"
+                >
+                  <select
+                    name="rechnungStatus"
+                    defaultValue={ws.rechnungStatus}
+                    className="rounded-md border border-zinc-300 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+                  >
+                    {rechnungStatusEnum.enumValues.map((s) => (
+                      <option key={s} value={s}>
+                        Rechnung: {s}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="trainerRe"
+                    defaultValue={ws.trainerRe}
+                    className="rounded-md border border-zinc-300 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+                  >
+                    {trainerReStatusEnum.enumValues.map((s) => (
+                      <option key={s} value={s}>
+                        Trainer-RE: {s}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="submit"
+                    className="rounded-md border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                  >
+                    Speichern
+                  </button>
+                </form>
+              </dd>
             </div>
           </>
         )}
       </section>
+
+      {istTeam && ws.interneNotizen && (
+        <section className="space-y-2">
+          <h2 className="font-medium">
+            Interne Notizen{" "}
+            <span className="text-xs font-normal text-zinc-500">
+              (für Trainer nicht sichtbar)
+            </span>
+          </h2>
+          <p className="whitespace-pre-wrap rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+            {ws.interneNotizen}
+          </p>
+        </section>
+      )}
 
       <section className="space-y-2">
         <h2 className="font-medium">Links & Materialien</h2>

@@ -171,6 +171,8 @@ export async function applySeed(db: Db): Promise<"seeded" | "skipped"> {
         format: "dbrains academy", modus: "VOR ORT", status: "Vorbereitung",
         termin1: inTagen(5), wsBetrag: "5200.00",
         sharepointUrl: sharepoint("energie-ooe-kundenservice"),
+        interneNotizen:
+          "Vorstand will bei der Ergebnispräsentation dabei sein — Folien unbedingt auf Deutsch.\nBudget für Follow-up ist laut Hr. Aigner bereits reserviert.",
       },
       leadId: undefined, aktuellePhaseErledigt: 1, // bewusst OHNE Trainer → sichtbare Lücke
     },
@@ -421,6 +423,15 @@ export async function applySeed(db: Db): Promise<"seeded" | "skipped"> {
       text: "Feedback vom Vorstand war sehr positiv. Follow-up-Angebot für Q1 vorbereiten?",
     },
   ]);
+
+  // One ad-hoc checklist item (no template behind it).
+  await db.insert(checkpunkt).values({
+    workshopId: wsLehrlinge.id,
+    titel: "Zweiten Raum für Gruppe B organisieren",
+    phase: "Vorbereitung",
+    faelligAm: inTagen(4),
+    verantwortlichUserId: romana.id,
+  });
 
   return "seeded";
 }

@@ -18,10 +18,12 @@ import {
 } from "@/lib/checklist";
 import { requireSession, requireTeam } from "@/lib/session";
 import {
+  adhocPunktFormSchema,
   checkpunktStatusFormSchema,
   checkpunktZuweisungFormSchema,
   idSchema,
   kommentarFormSchema,
+  rechnungFormSchema,
   workshopFormSchema,
   workshopStatusFormSchema,
   zuweisungFormSchema,
@@ -61,6 +63,7 @@ function workshopWerte(daten: ReturnType<typeof workshopFormSchema.parse>) {
     teamsMeetingUrl: daten.teamsMeetingUrl ?? null,
     verwendetesSlidedeck: daten.verwendetesSlidedeck ?? null,
     sevdeskId: daten.sevdeskId ?? null,
+    interneNotizen: daten.interneNotizen ?? null,
   };
 }
 
@@ -213,6 +216,74 @@ export async function setCheckpunktStatusAction(
     .where(eq(checkpunkt.id, cpId));
 
   revalidatePath(`/workshops/${id}`);
+}
+
+export async function addAdhocCheckpunktAction(
+  workshopId: number,
+  formData: FormData,
+): Promise<void> {
+  await requireTeam();
+  const id = idSchema.parse(workshopId);
+  const daten = adhocPunktFormSchema.parse(Object.fromEntries(formData));
+
+  const [ws] = await db
+    .select({ status: workshop.status })
+    .from(workshop)
+    .where(eq(workshop.id, id))
+    .limit(1);
+  if (!ws) return;
+
+  await db.insert(checkpunkt).values({
+    workshopId: id,
+    titel: daten.titel,
+    // Ad-hoc items belong to the phase the workshop is in right now.
+    phase: ws.status,
+    faelligAm: daten.faelligAm ?? null,
+    verantwortlichUserId: daten.verantwortlichUserId ?? null,
+  });
+
+  revalidatePath(`/workshops/${id}`);
+}
+
+export async function deleteCheckpunktAction(
+  workshopId: number,
+  checkpunktId: number,
+): Promise<void> {
+  await requireTeam();
+  const id = idSchema.parse(workshopId);
+  const cpId = idSchema.parse(checkpunktId);
+
+  await db
+    .delete(checkpunkt)
+    .where(and(eq(checkpunkt.id, cpId), eq(checkpunkt.workshopId, id)));
+
+  revalidatePath(`/workshops/${id}`);
+}
+
+export async function updateRechnungAction(
+  workshopId: number,
+  formData: FormData,
+): Promise<void> {
+  await requireTeam();
+  const id = idSchema.parse(workshopId);
+  const daten = rechnungFormSchema.parse(Object.fromEntries(formData));
+
+  await db
+    .update(workshop)
+    .set({ rechnungStatus: daten.rechnungStatus, trainerRe: daten.trainerRe })
+    .where(eq(workshop.id, id));
+
+  revalidatePath(`/workshops/${id}`);
+  revalidatePath("/");
+}
+
+export async function deleteWorkshopAction(workshopId: number): Promise<void> {
+  await requireTeam();
+  const id = idSchema.parse(workshopId);
+  // Zuweisungen, Checkpunkte und Kommentare hängen mit ON DELETE CASCADE dran.
+  await db.delete(workshop).where(eq(workshop.id, id));
+  revalidatePath("/workshops");
+  redirect("/workshops");
 }
 
 export async function assignCheckpunktAction(

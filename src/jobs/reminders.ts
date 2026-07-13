@@ -1,4 +1,4 @@
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, lte, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   checkpunkt,
@@ -45,7 +45,7 @@ export async function sendeErinnerungen(now: Date = new Date()): Promise<{
 }> {
   const faellige: FaelligerPunkt[] = await db
     .select({
-      titel: checkpunktVorlage.titel,
+      titel: sql<string>`coalesce(${checkpunkt.titel}, ${checkpunktVorlage.titel})`,
       faelligAm: checkpunkt.faelligAm,
       workshopId: workshop.id,
       workshopName: workshop.name,
@@ -53,13 +53,19 @@ export async function sendeErinnerungen(now: Date = new Date()): Promise<{
       verantwortlichEmail: nutzer.email,
     })
     .from(checkpunkt)
-    .innerJoin(
+    .leftJoin(
       checkpunktVorlage,
       eq(checkpunkt.vorlagePunktId, checkpunktVorlage.id),
     )
     .innerJoin(workshop, eq(checkpunkt.workshopId, workshop.id))
     .leftJoin(nutzer, eq(checkpunkt.verantwortlichUserId, nutzer.id))
-    .where(and(eq(checkpunkt.status, "offen"), lte(checkpunkt.faelligAm, now)));
+    .where(
+      and(
+        eq(checkpunkt.status, "offen"),
+        lte(checkpunkt.faelligAm, now),
+        ne(workshop.status, "On-Hold/Abgesagt"),
+      ),
+    );
 
   // Digest per responsible user.
   const proNutzer = new Map<string, FaelligerPunkt[]>();
