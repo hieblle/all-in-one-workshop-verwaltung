@@ -9,8 +9,9 @@ import {
 } from "drizzle-orm/pg-core";
 import { nutzer } from "./nutzer";
 
-// Trainers (internal + external). nutzer_id links a trainer to their login
-// account — required for assertTrainerAccess on external trainer sessions.
+// Trainers (internal + external). Every trainer has a login account
+// (nutzer_id) — required for assertTrainerAccess on trainer sessions.
+// aktiv = false is both "archived" and the access revocation switch.
 export const trainer = pgTable(
   "trainer",
   {
@@ -18,7 +19,6 @@ export const trainer = pgTable(
     name: text("name").notNull(),
     email: text("email").notNull().unique(),
     extern: boolean("extern").notNull().default(true),
-    verfuegbarkeitNotiz: text("verfuegbarkeit_notiz"),
     aktiv: boolean("aktiv").notNull().default(true),
     nutzerId: integer("nutzer_id").references(() => nutzer.id).unique(),
     createdAt: timestamp("created_at", { withTimezone: true })

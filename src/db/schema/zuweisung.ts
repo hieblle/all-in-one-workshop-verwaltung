@@ -20,21 +20,28 @@ export const zuweisungStatusEnum = pgEnum("zuweisung_status", [
   "abgesagt",
 ]);
 
-// Workshop ↔ trainer assignment. infomail_gesendet_am is set once the
-// automatic info package has been mailed (F4, Phase 2).
+export type ZuweisungStatus = (typeof zuweisungStatusEnum.enumValues)[number];
+
+// Workshop ↔ trainer assignment. The *_am timestamps record which automatic
+// trainer mails went out (SPEC §5) — they make the automation idempotent and
+// drive the ⚙ steps in the checklist overview.
 export const zuweisung = pgTable(
   "zuweisung",
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     workshopId: integer("workshop_id")
       .notNull()
-      .references(() => workshop.id, { onDelete: "cascade" }),
+      .references(() => workshop.id),
     trainerId: integer("trainer_id")
       .notNull()
-      .references(() => trainer.id, { onDelete: "cascade" }),
+      .references(() => trainer.id),
     rolle: zuweisungRolleEnum("rolle").notNull().default("lead"),
     status: zuweisungStatusEnum("status").notNull().default("angefragt"),
+    anfrageGesendetAm: timestamp("anfrage_gesendet_am", { withTimezone: true }),
     infomailGesendetAm: timestamp("infomail_gesendet_am", {
+      withTimezone: true,
+    }),
+    feedbackErinnerungAm: timestamp("feedback_erinnerung_am", {
       withTimezone: true,
     }),
     createdAt: timestamp("created_at", { withTimezone: true })

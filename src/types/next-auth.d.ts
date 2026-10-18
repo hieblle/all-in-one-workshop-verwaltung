@@ -19,7 +19,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     nutzerId?: number;
     rolle?: NutzerRolle;
-    rolleRefreshedAt?: number;
   }
 }
 
@@ -29,6 +28,5 @@ declare module "@auth/core/jwt" {
   interface JWT {
     nutzerId?: number;
     rolle?: NutzerRolle;
-    rolleRefreshedAt?: number;
   }
 }

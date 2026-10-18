@@ -20,6 +20,18 @@ export function formatDatumZeit(datum: Date | null): string {
   }).format(datum);
 }
 
+const UHRZEIT = new Intl.DateTimeFormat("de-AT", { hour: "2-digit", minute: "2-digit" });
+
+// "27.10.2026, 09:00–17:00" (or both full timestamps across days).
+export function formatTerminSpanne(start: Date | null, ende: Date | null): string {
+  if (!start) return "–";
+  if (!ende) return formatDatumZeit(start);
+  if (start.toDateString() === ende.toDateString()) {
+    return `${formatDatumZeit(start)}–${UHRZEIT.format(ende)}`;
+  }
+  return `${formatDatumZeit(start)} – ${formatDatumZeit(ende)}`;
+}
+
 export function formatBetrag(betrag: string | null): string {
   if (!betrag) return "–";
   return new Intl.NumberFormat("de-AT", {
@@ -36,7 +48,7 @@ export function zuInputWert(datum: Date | null): string {
   return `${datum.getFullYear()}-${pad(datum.getMonth() + 1)}-${pad(datum.getDate())}T${pad(datum.getHours())}:${pad(datum.getMinutes())}`;
 }
 
-export function tageBisLabel(datum: Date | null, now: Date = new Date()): string {
+export function tageBisLabel(datum: Date | null, now: Date): string {
   if (!datum) return "ohne Termin";
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
@@ -58,7 +70,8 @@ export const STATUS_REIHENFOLGE: WorkshopStatus[] = [
   "Durchführung",
   "Nachbereitung",
   "Done",
-  "On-Hold/Abgesagt",
+  "On-Hold",
+  "Abgesagt",
 ];
 
 export const STATUS_FARBEN: Record<WorkshopStatus, string> = {
@@ -69,7 +82,7 @@ export const STATUS_FARBEN: Record<WorkshopStatus, string> = {
   Durchführung:
     "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300",
   Nachbereitung: "bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300",
-  "On-Hold/Abgesagt":
-    "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+  "On-Hold": "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
+  Abgesagt: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
   Done: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
 };

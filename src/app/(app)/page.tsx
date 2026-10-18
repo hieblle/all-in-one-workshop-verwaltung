@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kleinerPrimaerButton, liste, sekundaerButton } from "@/components/ui";
 import { isTeamRolle } from "@/lib/access";
 import {
   getTeamDashboard,
@@ -6,6 +7,7 @@ import {
   type PunktEintrag,
   type WorkshopEintrag,
 } from "@/lib/dashboard";
+import { getJetzt } from "@/lib/einstellungen";
 import {
   formatDatum,
   formatDatumZeit,
@@ -13,23 +15,27 @@ import {
   tageBisLabel,
 } from "@/lib/format";
 import { requireSession } from "@/lib/session";
-import { updateVerfuegbarkeitAction } from "./actions";
+import { antwortTrainerAction } from "./workshops/actions";
+import { erinnerungErledigtAction } from "./actions";
 
 function PunktListe({
   punkte,
   leerText,
+  jetzt,
 }: {
   punkte: PunktEintrag[];
   leerText: string;
+  jetzt: Date;
 }) {
-  const jetzt = new Date();
   if (punkte.length === 0) {
     return <p className="text-sm text-zinc-500">{leerText}</p>;
   }
+  const heute = new Date(jetzt);
+  heute.setHours(0, 0, 0, 0);
   return (
-    <ul className="divide-y divide-zinc-100 rounded-md border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+    <ul className={liste}>
       {punkte.map((p) => {
-        const ueberfaellig = p.faelligAm !== null && p.faelligAm < jetzt;
+        const ueberfaellig = p.faelligAm !== null && p.faelligAm < heute;
         return (
           <li key={p.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
             <div className="min-w-0">
@@ -38,13 +44,13 @@ function PunktListe({
                 <Link href={`/workshops/${p.workshopId}`} className="hover:underline">
                   {p.workshopName}
                 </Link>
-                {p.verantwortlichName ? ` · ${p.verantwortlichName}` : " · niemand zugewiesen"}
+                {p.verantwortlichName ? ` · ${p.verantwortlichName}` : " · service@ (niemand zugewiesen)"}
               </p>
             </div>
             <span
               className={`ml-auto whitespace-nowrap text-xs ${ueberfaellig ? "font-semibold text-red-600" : "text-zinc-500"}`}
             >
-              {formatDatum(p.faelligAm)} ({tageBisLabel(p.faelligAm)})
+              {formatDatum(p.faelligAm)} ({tageBisLabel(p.faelligAm, jetzt)})
             </span>
           </li>
         );
@@ -53,9 +59,15 @@ function PunktListe({
   );
 }
 
-function WorkshopListe({ eintraege }: { eintraege: WorkshopEintrag[] }) {
+function WorkshopListe({
+  eintraege,
+  jetzt,
+}: {
+  eintraege: WorkshopEintrag[];
+  jetzt: Date;
+}) {
   return (
-    <ul className="divide-y divide-zinc-100 rounded-md border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+    <ul className={liste}>
       {eintraege.map((w) => (
         <li key={w.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
           <div className="min-w-0">
@@ -72,7 +84,7 @@ function WorkshopListe({ eintraege }: { eintraege: WorkshopEintrag[] }) {
             </span>
             <span className="whitespace-nowrap text-xs text-zinc-500">
               {formatDatumZeit(w.termin1)}
-              {w.termin1 ? ` (${tageBisLabel(w.termin1)})` : ""}
+              {w.termin1 ? ` (${tageBisLabel(w.termin1, jetzt)})` : ""}
             </span>
           </span>
         </li>
@@ -83,74 +95,137 @@ function WorkshopListe({ eintraege }: { eintraege: WorkshopEintrag[] }) {
 
 export default async function DashboardPage() {
   const session = await requireSession();
+  const jetzt = await getJetzt();
 
   if (!isTeamRolle(session.user.rolle)) {
-    const daten = await getTrainerDashboard(session);
+    const daten = await getTrainerDashboard(session, jetzt);
     return (
       <div className="space-y-8">
         <h1 className="text-xl font-semibold">
           Hallo {session.user.name?.split(" ")[0] ?? ""} 👋
         </h1>
 
+        {daten.anfragen.length > 0 && (
+          <section className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
+            <h2 className="font-medium">Neue Anfragen ({daten.anfragen.length})</h2>
+            <ul className={liste}>
+              {daten.anfragen.map((a) => (
+                <li
+                  key={a.zuweisungId}
+                  className="flex flex-wrap items-center gap-2 bg-white px-3 py-2 text-sm dark:bg-zinc-900"
+                >
+                  <div className="min-w-0">
+                    <Link href={`/workshops/${a.id}`} className="font-medium hover:underline">
+                      {a.name}
+                    </Link>
+                    <p className="text-xs text-zinc-500">
+                      {a.firma} · {formatDatumZeit(a.termin1)}
+                    </p>
+                  </div>
+                  <span className="ml-auto flex gap-2">
+                    <form action={antwortTrainerAction.bind(null, a.id, a.zuweisungId)}>
+                      <input type="hidden" name="antwort" value="bestaetigt" />
+                      <button type="submit" className={kleinerPrimaerButton}>
+                        Zusagen
+                      </button>
+                    </form>
+                    <form action={antwortTrainerAction.bind(null, a.id, a.zuweisungId)}>
+                      <input type="hidden" name="antwort" value="abgesagt" />
+                      <button type="submit" className={sekundaerButton}>
+                        Absagen
+                      </button>
+                    </form>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {daten.feedbackOffen.length > 0 && (
+          <section className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
+            <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+              Feedback ausstehend ({daten.feedbackOffen.length})
+            </h2>
+            <p className="text-xs text-amber-800 dark:text-amber-300">
+              Bitte den Feedback-Bereich auf der Workshop-Seite ausfüllen (2–3 Minuten).
+            </p>
+            <WorkshopListe eintraege={daten.feedbackOffen} jetzt={jetzt} />
+          </section>
+        )}
+
         <section className="space-y-2">
-          <h2 className="font-medium">
-            Deine offenen Aufgaben ({daten.meinePunkte.length})
-          </h2>
+          <h2 className="font-medium">Deine offenen Aufgaben ({daten.meinePunkte.length})</h2>
           <PunktListe
             punkte={daten.meinePunkte}
             leerText="Nichts offen — alles erledigt!"
+            jetzt={jetzt}
           />
         </section>
 
         <section className="space-y-2">
           <h2 className="font-medium">Deine Workshops</h2>
           {daten.meineWorkshops.length === 0 ? (
-            <p className="text-sm text-zinc-500">Aktuell keine zugewiesenen Workshops.</p>
+            <p className="text-sm text-zinc-500">Aktuell keine zugesagten Workshops.</p>
           ) : (
-            <WorkshopListe eintraege={daten.meineWorkshops} />
+            <WorkshopListe eintraege={daten.meineWorkshops} jetzt={jetzt} />
           )}
         </section>
-
-        {daten.trainerId !== null && (
-        <section className="space-y-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <h2 className="font-medium">Deine Verfügbarkeit</h2>
-          <p className="text-xs text-zinc-500">
-            Selbstauskunft für das Team — z. B. „Di–Do verfügbar, ab Oktober ausgebucht“.
-          </p>
-          <form action={updateVerfuegbarkeitAction} className="flex flex-col gap-2 sm:flex-row">
-            <input
-              name="verfuegbarkeitNotiz"
-              defaultValue={daten.verfuegbarkeitNotiz ?? ""}
-              placeholder="Deine Verfügbarkeit …"
-              className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            />
-            <button
-              type="submit"
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
-            >
-              Speichern
-            </button>
-          </form>
-        </section>
-        )}
       </div>
     );
   }
 
-  const daten = await getTeamDashboard(session);
+  const daten = await getTeamDashboard(session, jetzt);
 
   return (
     <div className="space-y-8">
       <h1 className="text-xl font-semibold">Dashboard</h1>
+
+      {daten.erinnerungen.length > 0 && (
+        <section className="space-y-2 rounded-lg border border-violet-300 bg-violet-50 p-4 dark:border-violet-800 dark:bg-violet-950">
+          <h2 className="text-sm font-semibold text-violet-900 dark:text-violet-200">
+            🔁 Deine Erinnerungen ({daten.erinnerungen.length})
+          </h2>
+          <ul className={liste}>
+            {daten.erinnerungen.map((e) => (
+              <li
+                key={e.id}
+                className="flex flex-wrap items-center gap-2 bg-white px-3 py-2 text-sm dark:bg-zinc-900"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium">{e.titel}</p>
+                  <p className="text-xs text-zinc-500">
+                    fällig {formatDatum(e.naechsteFaelligkeit)}
+                    {e.notiz ? ` · ${e.notiz}` : ""}
+                    {e.link && (
+                      <>
+                        {" · "}
+                        <a href={e.link} className="underline">
+                          Link
+                        </a>
+                      </>
+                    )}
+                  </p>
+                </div>
+                <form action={erinnerungErledigtAction.bind(null, e.id)} className="ml-auto">
+                  <button type="submit" className={kleinerPrimaerButton}>
+                    Erledigt
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {(daten.ohneTrainer.length > 0 || daten.offeneRechnungen.length > 0) && (
         <div className="grid gap-4 lg:grid-cols-2">
           {daten.ohneTrainer.length > 0 && (
             <section className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
               <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                ⚠️ Ohne Trainer-Zuweisung ({daten.ohneTrainer.length})
+                ⚠️ Ohne Trainer ({daten.ohneTrainer.length})
               </h2>
-              <WorkshopListe eintraege={daten.ohneTrainer} />
+              <WorkshopListe eintraege={daten.ohneTrainer} jetzt={jetzt} />
             </section>
           )}
           {daten.offeneRechnungen.length > 0 && (
@@ -158,7 +233,7 @@ export default async function DashboardPage() {
               <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
                 💶 Rechnung offen ({daten.offeneRechnungen.length})
               </h2>
-              <WorkshopListe eintraege={daten.offeneRechnungen} />
+              <WorkshopListe eintraege={daten.offeneRechnungen} jetzt={jetzt} />
             </section>
           )}
         </div>
@@ -171,18 +246,27 @@ export default async function DashboardPage() {
         <PunktListe
           punkte={daten.ueberfaellig}
           leerText="Nichts überfällig — sehr gut!"
+          jetzt={jetzt}
         />
       </section>
 
       <div className="grid gap-8 lg:grid-cols-2">
         <section className="space-y-2">
-          <h2 className="font-medium">Diese Woche fällig ({daten.dieseWoche.length})</h2>
-          <PunktListe punkte={daten.dieseWoche} leerText="Diese Woche wird nichts fällig." />
+          <h2 className="font-medium">Nächste 7 Tage fällig ({daten.dieseWoche.length})</h2>
+          <PunktListe
+            punkte={daten.dieseWoche}
+            leerText="In den nächsten 7 Tagen wird nichts fällig."
+            jetzt={jetzt}
+          />
         </section>
 
         <section className="space-y-2">
           <h2 className="font-medium">Meine Aufgaben ({daten.meinePunkte.length})</h2>
-          <PunktListe punkte={daten.meinePunkte} leerText="Dir ist aktuell nichts zugewiesen." />
+          <PunktListe
+            punkte={daten.meinePunkte}
+            leerText="Dir ist aktuell nichts zugewiesen."
+            jetzt={jetzt}
+          />
         </section>
       </div>
 
@@ -193,7 +277,7 @@ export default async function DashboardPage() {
         {daten.anstehende.length === 0 ? (
           <p className="text-sm text-zinc-500">Keine Termine in den nächsten 30 Tagen.</p>
         ) : (
-          <WorkshopListe eintraege={daten.anstehende} />
+          <WorkshopListe eintraege={daten.anstehende} jetzt={jetzt} />
         )}
       </section>
     </div>

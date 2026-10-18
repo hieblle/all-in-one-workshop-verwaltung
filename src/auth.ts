@@ -5,13 +5,41 @@ import { eq } from "drizzle-orm";
 import { authConfig } from "@/auth.config";
 import { db } from "@/db";
 import { nutzer, type NutzerRolle } from "@/db/schema";
-import { verifyMagicLinkToken } from "@/lib/magic-link";
+import { istTestLoginAktiv } from "@/lib/konfig";
+import { hatAktivesTrainerProfil, verifyMagicLinkToken } from "@/lib/magic-link";
+import { idSchema } from "@/lib/validation";
 
-const ROLLE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+// Only accounts from the dbrains Microsoft tenant (SPEC §3). Checked on the
+// token itself, not just via the issuer config, so a misconfigured issuer
+// (/common) can't let a foreign account take over a team account.
+function erlaubterTenant(): string | null {
+  if (process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID) {
+    return process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID;
+  }
+  const treffer = process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER?.match(
+    /login\.microsoftonline\.com\/([0-9a-f-]{36})\//i,
+  );
+  return treffer?.[1] ?? null;
+}
 
-// No self-signup: Entra sign-ins are only accepted for existing nutzer rows
+// Session check on every request: a demoted, deleted or deactivated account
+// (trainer.aktiv = false) loses access immediately (SPEC §3).
+async function aktuelleRolle(nutzerId: number): Promise<NutzerRolle | null> {
+  const [dbUser] = await db
+    .select({ rolle: nutzer.rolle })
+    .from(nutzer)
+    .where(eq(nutzer.id, nutzerId))
+    .limit(1);
+  if (!dbUser) return null;
+  if (dbUser.rolle === "trainer" && !(await hatAktivesTrainerProfil(nutzerId))) {
+    return null;
+  }
+  return dbUser.rolle;
+}
+
+// No self-signup: Entra sign-ins are only accepted for existing team rows
 // (matched by entra_oid, falling back to email on first login). Magic links
-// only work for accounts with rolle = trainer.
+// only work for active trainers. The test login exists for the MVP only.
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
@@ -36,10 +64,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
+    Credentials({
+      id: "test-login",
+      name: "Test-Login",
+      credentials: { nutzerId: {} },
+      async authorize(credentials) {
+        if (!istTestLoginAktiv()) return null;
+        const parsed = idSchema.safeParse(credentials?.nutzerId);
+        if (!parsed.success) return null;
+        const [account] = await db
+          .select()
+          .from(nutzer)
+          .where(eq(nutzer.id, parsed.data))
+          .limit(1);
+        if (!account || (await aktuelleRolle(account.id)) === null) return null;
+        return {
+          id: String(account.id),
+          name: account.name,
+          email: account.email,
+          rolle: account.rolle,
+        };
+      },
+    }),
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
       if (account?.provider !== "microsoft-entra-id") return true;
+
+      const tenant = erlaubterTenant();
+      if (!tenant || profile?.tid !== tenant) return false;
 
       const oid = (profile?.oid ?? profile?.sub) as string | undefined;
       const email = user.email?.toLowerCase();
@@ -50,7 +103,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         .from(nutzer)
         .where(eq(nutzer.entraOid, oid))
         .limit(1);
-      if (byOid) return true;
+      if (byOid) return byOid.rolle !== "trainer";
 
       // First Entra login: link the OID to a pre-provisioned team account.
       const [byEmail] = await db
@@ -68,10 +121,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async jwt({ token, user, account, profile }) {
       if (user) {
-        if (account?.provider === "magic-link" && "rolle" in user) {
+        if (
+          (account?.provider === "magic-link" || account?.provider === "test-login") &&
+          "rolle" in user
+        ) {
           token.nutzerId = Number(user.id);
           token.rolle = user.rolle as NutzerRolle;
-          token.rolleRefreshedAt = Date.now();
           return token;
         }
 
@@ -85,28 +140,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (dbUser) {
             token.nutzerId = dbUser.id;
             token.rolle = dbUser.rolle;
-            token.rolleRefreshedAt = Date.now();
           }
         }
         return token;
       }
 
-      // Re-validate the role claim against the DB at most every 5 minutes so
-      // demoted or deleted accounts lose access promptly instead of keeping
-      // their frozen JWT role for the whole session lifetime.
-      const isStale =
-        token.nutzerId !== undefined &&
-        (token.rolleRefreshedAt === undefined ||
-          Date.now() - token.rolleRefreshedAt > ROLLE_REFRESH_INTERVAL_MS);
-      if (isStale) {
-        const [dbUser] = await db
-          .select()
-          .from(nutzer)
-          .where(eq(nutzer.id, token.nutzerId as number))
-          .limit(1);
-        if (!dbUser) return null; // account deleted → destroy the session
-        token.rolle = dbUser.rolle;
-        token.rolleRefreshedAt = Date.now();
+      if (token.nutzerId !== undefined) {
+        const rolle = await aktuelleRolle(token.nutzerId);
+        if (rolle === null) return null; // deleted/deactivated → destroy the session
+        token.rolle = rolle;
       }
       return token;
     },

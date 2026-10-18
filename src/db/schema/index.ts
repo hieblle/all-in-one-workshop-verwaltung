@@ -4,4 +4,6 @@ export * from "./trainer";
 export * from "./workshop";
 export * from "./zuweisung";
 export * from "./checklist";
-export * from "./thread";
+export * from "./modul";
+export * from "./changelog";
+export * from "./system";

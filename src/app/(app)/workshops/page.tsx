@@ -45,6 +45,7 @@ export default async function WorkshopsPage({
     von: filter.von,
     bis: filter.bis,
     suche: filter.suche,
+    archiv: filter.archiv,
   });
 
   const alleTrainer = istTeam
@@ -57,7 +58,9 @@ export default async function WorkshopsPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Workshops</h1>
+        <h1 className="text-xl font-semibold">
+          Workshops{filter.archiv && <span className="font-normal text-zinc-500"> — Archiv</span>}
+        </h1>
         {istTeam && (
           <Link
             href="/workshops/neu"
@@ -146,6 +149,9 @@ export default async function WorkshopsPage({
               className="rounded-md border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
             />
           </label>
+          <label className="flex items-center gap-1.5 self-center text-xs">
+            <input type="checkbox" name="archiv" defaultChecked={filter.archiv} /> Archiv
+          </label>
           <input type="hidden" name="ansicht" value={filter.ansicht} />
           <button
             type="submit"
@@ -178,7 +184,7 @@ export default async function WorkshopsPage({
           Keine Workshops gefunden.
         </p>
       ) : filter.ansicht === "board" && istTeam ? (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-7">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-8">
           {STATUS_REIHENFOLGE.map((status) => {
             const spalte = workshops.filter((w) => w.status === status);
             return (
@@ -212,6 +218,7 @@ export default async function WorkshopsPage({
                 <th className="px-3 py-2 font-medium">Type</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 font-medium">Termin 1</th>
+                {istTeam && <th className="px-3 py-2 font-medium">Verantwortlich</th>}
                 {istTeam && <th className="px-3 py-2 font-medium">Betrag</th>}
               </tr>
             </thead>
@@ -235,6 +242,9 @@ export default async function WorkshopsPage({
                     <StatusBadge status={w.status} />
                   </td>
                   <td className="px-3 py-2">{formatDatum(w.termin1)}</td>
+                  {istTeam && (
+                    <td className="px-3 py-2 text-zinc-500">{w.verantwortlichName ?? "service@"}</td>
+                  )}
                   {istTeam && (
                     <td className="px-3 py-2">{formatBetrag(w.wsBetrag)}</td>
                   )}

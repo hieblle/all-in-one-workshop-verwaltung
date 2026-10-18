@@ -1,34 +1,31 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt } from "drizzle-orm";
 import type { Db } from "./index";
 import {
+  aenderung,
   checklistenVorlage,
   checkpunkt,
   checkpunktVorlage,
   kunde,
+  modul,
   nutzer,
-  threadKommentar,
   trainer,
+  trainerFeedback,
+  vorschlag,
+  wiederkehrendeErinnerung,
   workshop,
+  workshopModul,
   zuweisung,
   type NeuerWorkshop,
-  type WorkshopStatus,
+  type ZuweisungStatus,
 } from "./schema";
-import { instanziiereCheckpunkte } from "@/lib/checklist";
+import { nachWorkshopAenderung } from "@/lib/automatik";
 
-// Rich demo dataset standing in for the real Notion import: realistic
-// workshops across all statuses with deliberate gaps (overdue items, missing
-// trainers, open invoices) so the app has something to surface. All dates are
-// relative to seed time so the data never goes stale. Refuses to run on a
-// non-empty database.
-
-const PHASEN_REIHENFOLGE: WorkshopStatus[] = [
-  "Vorabstimmung",
-  "Angebot",
-  "Vorbereitung",
-  "Durchführung",
-  "Nachbereitung",
-  "Done",
-];
+// MVP test dataset (SPEC §8: "nur Testdaten"): realistic workshops in every
+// phase with deliberate gaps — overdue tasks, a workshop without trainer, a
+// pending trainer request, missing feedback — so every screen has something
+// to show. All dates are relative to seed time. Runs through the real
+// automation, so the Postausgang starts with realistic previews. Refuses to
+// run on a non-empty database.
 
 function inTagen(tage: number, stunde = 9): Date {
   const datum = new Date();
@@ -37,8 +34,16 @@ function inTagen(tage: number, stunde = 9): Date {
   return datum;
 }
 
+function ersterMontagNaechsterMonat(): Date {
+  const datum = new Date();
+  datum.setMonth(datum.getMonth() + 1, 1);
+  datum.setHours(9, 0, 0, 0);
+  while (datum.getDay() !== 1) datum.setDate(datum.getDate() + 1);
+  return datum;
+}
+
 function sharepoint(pfad: string): string {
-  return `https://dbrains.sharepoint.com/sites/workshops/${pfad}`;
+  return `https://dbrains.sharepoint.com/sites/workshops/Shared%20Documents/${pfad}`;
 }
 
 export async function applySeed(db: Db): Promise<"seeded" | "skipped"> {
@@ -46,61 +51,64 @@ export async function applySeed(db: Db): Promise<"seeded" | "skipped"> {
   if (vorhandene.length > 0) {
     return "skipped";
   }
+  const jetzt = new Date();
 
   // --- Nutzer & Trainer ------------------------------------------------
-  const [leon, romana, , , trainerinNutzer, thomasNutzer] = await db
+  const [leon, romana, martin, , annaNutzer, thomasNutzer, juliaNutzer] = await db
     .insert(nutzer)
     .values([
       { name: "Leon", email: "leon@dbrains.academy", rolle: "admin" },
       { name: "Romana", email: "romana@dbrains.academy", rolle: "team" },
       { name: "Martin", email: "martin@dbrains.academy", rolle: "team" },
       { name: "Sarah", email: "sarah@dbrains.academy", rolle: "team" },
-      { name: "Externe Trainerin", email: "trainerin@example.com", rolle: "trainer" },
-      { name: "Thomas Brunner", email: "thomas.brunner@trainernetz.example.com", rolle: "trainer" },
+      { name: "Anna Berger", email: "anna.berger@example.com", rolle: "trainer" },
+      { name: "Thomas Brunner", email: "thomas.brunner@example.com", rolle: "trainer" },
+      { name: "Julia Wagner", email: "julia.wagner@example.com", rolle: "trainer" },
     ])
     .returning();
 
-  const [trainerin, thomas, leonTrainer, romanaTrainer] = await db
+  const [anna, thomas, , leonTrainer, romanaTrainer] = await db
     .insert(trainer)
     .values([
-      {
-        name: "Externe Trainerin",
-        email: "trainerin@example.com",
-        extern: true,
-        nutzerId: trainerinNutzer.id,
-        verfuegbarkeitNotiz: "Di–Do verfügbar, Mo/Fr nur online",
-      },
-      {
-        name: "Thomas Brunner",
-        email: "thomas.brunner@trainernetz.example.com",
-        extern: true,
-        nutzerId: thomasNutzer.id,
-        verfuegbarkeitNotiz: "September ausgebucht, ab Oktober wieder frei",
-      },
+      { name: "Anna Berger", email: "anna.berger@example.com", extern: true, nutzerId: annaNutzer.id },
+      { name: "Thomas Brunner", email: "thomas.brunner@example.com", extern: true, nutzerId: thomasNutzer.id },
+      // Deactivated: shows that access ends immediately.
+      { name: "Julia Wagner", email: "julia.wagner@example.com", extern: true, aktiv: false, nutzerId: juliaNutzer.id },
       { name: "Leon", email: "leon@dbrains.academy", extern: false, nutzerId: leon.id },
       { name: "Romana", email: "romana@dbrains.academy", extern: false, nutzerId: romana.id },
     ])
     .returning();
 
-  // --- Kunden -----------------------------------------------------------
+  // --- Kunden & Module ---------------------------------------------------
   const kunden = await db
     .insert(kunde)
     .values([
-      { firma: "Alpenland Maschinenbau GmbH" },
+      { firma: "Alpenland Maschinenbau GmbH", hubspotId: "18273645" },
       { firma: "TechnoWerk Linz GmbH" },
       { firma: "Bäckerei Wimmer" },
       { firma: "Stadtgemeinde Traun" },
       { firma: "HTL Wels" },
-      { firma: "Energie OÖ AG" },
+      { firma: "Energie OÖ AG", hubspotId: "99120034" },
       { firma: "Kanzlei Mayr & Partner" },
-      { firma: "Möbelwerk Steiner GmbH" },
       { firma: "VersicherungsPlus AG" },
       { firma: "Logistik Pichler GmbH" },
     ])
     .returning();
   const kundeNach = new Map(kunden.map((k) => [k.firma, k.id]));
 
-  // --- Checklisten-Vorlagen ----------------------------------------------
+  const modulListe = await db
+    .insert(modul)
+    .values([
+      { name: "KI-Grundlagen", sharepointUrl: sharepoint("Module/KI-Grundlagen"), beschreibung: "Was ist KI, wie funktionieren Sprachmodelle, Chancen & Grenzen" },
+      { name: "Prompting", sharepointUrl: sharepoint("Module/Prompting"), beschreibung: "Gute Prompts, Rollen, Beispiele, Übungen" },
+      { name: "Copilot in Outlook & Teams", sharepointUrl: sharepoint("Module/Copilot") },
+      { name: "KI-Recht / AI Act", sharepointUrl: sharepoint("Module/AI-Act") },
+      { name: "Agentic AI Basics", sharepointUrl: sharepoint("Module/Agentic-AI") },
+    ])
+    .returning();
+  const modulNach = new Map(modulListe.map((m) => [m.name, m.id]));
+
+  // --- Checkliste (SPEC §4) ------------------------------------------------
   const [standard, lehrlinge] = await db
     .insert(checklistenVorlage)
     .values([
@@ -110,328 +118,278 @@ export async function applySeed(db: Db): Promise<"seeded" | "skipped"> {
     .returning();
 
   await db.insert(checkpunktVorlage).values([
-    // Vorabstimmung
-    { vorlageId: standard.id, titel: "Erstgespräch dokumentieren (Notizen in SharePoint)", phase: "Vorabstimmung", verantwortlichRolle: "team", faelligOffsetTage: -42 },
-    { vorlageId: standard.id, titel: "Zieltermin mit Kunde abstimmen", phase: "Vorabstimmung", verantwortlichRolle: "team", faelligOffsetTage: -35 },
-    // Angebot
-    { vorlageId: standard.id, titel: "Angebot in SevDesk erstellen und versenden", phase: "Angebot", verantwortlichRolle: "team", faelligOffsetTage: -28, autoCheckRegel: "sevdesk_re" },
-    { vorlageId: standard.id, titel: "Angebot nachfassen (falls keine Rückmeldung)", phase: "Angebot", verantwortlichRolle: "team", faelligOffsetTage: -21 },
-    // Vorbereitung
-    { vorlageId: standard.id, titel: "Vorab-Fragebogen (MS Forms) an Teilnehmer senden", phase: "Vorbereitung", verantwortlichRolle: "team", faelligOffsetTage: -14, autoCheckRegel: "forms_vorab" },
-    { vorlageId: standard.id, titel: "Kalendereintrag für alle Beteiligten anlegen", phase: "Vorbereitung", verantwortlichRolle: "team", faelligOffsetTage: -14, autoCheckRegel: "outlook_termin" },
-    { vorlageId: standard.id, titel: "Teams-Meeting anlegen (bei ONLINE)", phase: "Vorbereitung", verantwortlichRolle: "team", faelligOffsetTage: -10, autoCheckRegel: "teams_meeting" },
-    { vorlageId: standard.id, titel: "Agenda aus Vorgespräch + Forms-Antworten erstellen", phase: "Vorbereitung", verantwortlichRolle: "trainer_lead", faelligOffsetTage: -7 },
-    { vorlageId: standard.id, titel: "Slidedeck finalisieren und in SharePoint ablegen", phase: "Vorbereitung", verantwortlichRolle: "trainer_lead", faelligOffsetTage: -3 },
-    { vorlageId: standard.id, titel: "Raum, Technik und Catering mit Kunde klären", phase: "Vorbereitung", verantwortlichRolle: "team", faelligOffsetTage: -5 },
-    // Durchführung
-    { vorlageId: standard.id, titel: "Teilnehmerliste und Feedback-QR-Code vorbereiten", phase: "Durchführung", verantwortlichRolle: "trainer_lead", faelligOffsetTage: -1 },
-    // Nachbereitung
-    { vorlageId: standard.id, titel: "Feedback-Formular versenden", phase: "Nachbereitung", verantwortlichRolle: "team", faelligOffsetTage: 1, autoCheckRegel: "forms_feedback" },
-    { vorlageId: standard.id, titel: "Follow-up-Mail mit Materialien an Kunde", phase: "Nachbereitung", verantwortlichRolle: "trainer_lead", faelligOffsetTage: 3 },
-    { vorlageId: standard.id, titel: "Rechnung in SevDesk stellen", phase: "Nachbereitung", verantwortlichRolle: "team", faelligOffsetTage: 5, autoCheckRegel: "sevdesk_re" },
-    { vorlageId: standard.id, titel: "FUP-Termin vorschlagen", phase: "Nachbereitung", verantwortlichRolle: "team", faelligOffsetTage: 14 },
-    // Lehrlinge-Zusatz
-    { vorlageId: lehrlinge.id, titel: "Einverständniserklärungen der Erziehungsberechtigten einholen", phase: "Vorbereitung", verantwortlichRolle: "team", faelligOffsetTage: -14 },
-    { vorlageId: lehrlinge.id, titel: "Ausbilder:innen über Ablauf informieren", phase: "Vorbereitung", verantwortlichRolle: "team", faelligOffsetTage: -7 },
+    { vorlageId: standard.id, reihenfolge: 10, titel: "Erstgespräch dokumentieren", phase: "Vorabstimmung", verantwortlichRolle: "team", faelligOffsetTage: -42, linkFeld: "notion" },
+    { vorlageId: standard.id, reihenfolge: 20, titel: "Termin mit Kunde abstimmen und eintragen", phase: "Vorabstimmung", verantwortlichRolle: "team", faelligOffsetTage: -35, autoCheckRegel: "termin_eingetragen" },
+    { vorlageId: standard.id, reihenfolge: 30, titel: "Angebot erstellen und versenden", phase: "Angebot", verantwortlichRolle: "team", faelligOffsetTage: -28 },
+    { vorlageId: standard.id, reihenfolge: 40, titel: "Angebot nachfassen", phase: "Angebot", verantwortlichRolle: "team", faelligOffsetTage: -21, autoCheckRegel: "angebot_angenommen" },
+    { vorlageId: standard.id, reihenfolge: 50, titel: "Trainer zuweisen", phase: "Angebot", verantwortlichRolle: "team", faelligOffsetTage: -21, autoCheckRegel: "trainer_zugewiesen" },
+    { vorlageId: standard.id, reihenfolge: 60, titel: "Vorab-Fragebogen an Teilnehmer senden", phase: "Vorbereitung", verantwortlichRolle: "team", faelligOffsetTage: -14, linkFeld: "forms_vorab" },
+    { vorlageId: standard.id, reihenfolge: 70, titel: "Raum, Technik und Catering mit Kunde klären", phase: "Vorbereitung", verantwortlichRolle: "team", faelligOffsetTage: -7, nurModus: "praesenz" },
+    { vorlageId: standard.id, reihenfolge: 80, titel: "Präsentation finalisieren und Link eintragen", phase: "Vorbereitung", verantwortlichRolle: "trainer_lead", faelligOffsetTage: -3, autoCheckRegel: "praesentation_eingetragen" },
+    { vorlageId: standard.id, reihenfolge: 90, titel: "Änderungen an Folien eintragen", phase: "Vorbereitung", verantwortlichRolle: "trainer_lead", faelligOffsetTage: -3 },
+    { vorlageId: standard.id, reihenfolge: 100, titel: "Teilnehmer-Feedback auswerten", phase: "Nachbereitung", verantwortlichRolle: "team", faelligOffsetTage: 3, linkFeld: "forms_feedback" },
+    { vorlageId: standard.id, reihenfolge: 110, titel: "Follow-up-Mail mit Materialien an Kunde", phase: "Nachbereitung", verantwortlichRolle: "team", faelligOffsetTage: 3 },
+    { vorlageId: standard.id, reihenfolge: 120, titel: "Bei Ansprechperson nachfragen, ob alles gepasst hat", phase: "Nachbereitung", verantwortlichRolle: "team", faelligOffsetTage: 7 },
+    { vorlageId: standard.id, reihenfolge: 130, titel: "Rechnung stellen", phase: "Nachbereitung", verantwortlichRolle: "team", faelligOffsetTage: 7 },
+    { vorlageId: lehrlinge.id, reihenfolge: 65, titel: "Einverständniserklärungen der Erziehungsberechtigten einholen", phase: "Vorbereitung", verantwortlichRolle: "team", faelligOffsetTage: -14 },
+    { vorlageId: lehrlinge.id, reihenfolge: 75, titel: "Ausbilder:innen über Ablauf informieren", phase: "Vorbereitung", verantwortlichRolle: "team", faelligOffsetTage: -7 },
   ]);
 
-  // --- Workshops ----------------------------------------------------------
-  // leadId/coId reference trainer records; erledigtBis marks how far the
-  // checklist is ticked off ("phase" = everything before current phase).
+  // --- Workshops --------------------------------------------------------
   interface SeedWorkshop {
     daten: Omit<NeuerWorkshop, "unternehmenId"> & { firma: string };
-    leadId?: number;
-    coId?: number;
-    aktuellePhaseErledigt?: number; // how many items of the current phase are done
+    module?: string[];
+    trainer?: { id: number; rolle: "lead" | "co"; status: ZuweisungStatus }[];
+    // Tasks due before now are ticked off — except these (deliberate gaps).
+    offenLassen?: string[];
+    feedbackVon?: number;
+    archiviert?: boolean;
   }
 
   const seedWorkshops: SeedWorkshop[] = [
-    // --- Vorbereitung (die heiße Phase) — Reihenfolge 1+2 fix für Demo/Doku
     {
       daten: {
         firma: "Alpenland Maschinenbau GmbH", name: "KI-Grundlagen für Lehrlinge",
         ansprechperson: "Max Mustermann", type: "Lehrlinge", format: "dbrains academy",
-        modus: "VOR ORT", status: "Vorbereitung", termin1: inTagen(12), termin2: inTagen(26),
-        wsBetrag: "2500.00", sharepointUrl: sharepoint("alpenland-lehrlinge"),
-        formsVorabUrl: "https://forms.office.com/r/beispiel1",
+        modus: "VOR ORT", ort: "Werk Steyr, Schulungsraum 2", status: "Vorbereitung",
+        verantwortlichInternId: romana.id, termin1: inTagen(9), termin2: inTagen(23),
+        wsBetrag: "2500.00", sharepointUrl: sharepoint("Kunden/Alpenland"),
+        formsVorabUrl: "https://forms.office.com/r/vorab-alpenland",
+        interneNotizen: "24 Lehrlinge — Kunde überlegt, die Gruppe zu teilen.",
       },
-      leadId: undefined, coId: undefined, aktuellePhaseErledigt: 2,
-    },
-    {
-      daten: {
-        firma: "TechnoWerk Linz GmbH", name: "Agentic AI Deep Dive",
-        ansprechperson: "Dr. Petra Lang", type: "Agentic AI", modus: "ONLINE",
-        status: "Vorabstimmung", wsBetrag: "4800.00",
-      },
+      module: ["KI-Grundlagen", "Prompting"],
+      trainer: [
+        { id: anna.id, rolle: "lead", status: "bestaetigt" },
+        { id: romanaTrainer.id, rolle: "co", status: "bestaetigt" },
+      ],
+      offenLassen: ["Vorab-Fragebogen"],
     },
     {
       daten: {
         firma: "Energie OÖ AG", name: "KI im Kundenservice — Pilotworkshop",
         ansprechperson: "Herbert Aigner", type: "Maßgeschneiderter Workshop",
-        format: "dbrains academy", modus: "VOR ORT", status: "Vorbereitung",
-        termin1: inTagen(5), wsBetrag: "5200.00",
-        sharepointUrl: sharepoint("energie-ooe-kundenservice"),
-        interneNotizen:
-          "Vorstand will bei der Ergebnispräsentation dabei sein — Folien unbedingt auf Deutsch.\nBudget für Follow-up ist laut Hr. Aigner bereits reserviert.",
+        format: "dbrains academy", modus: "VOR ORT", ort: "Linz, Böhmerwaldstraße 3",
+        status: "Vorbereitung", verantwortlichInternId: martin.id, termin1: inTagen(5),
+        wsBetrag: "5200.00", sharepointUrl: sharepoint("Kunden/Energie-OOE"),
+        interneNotizen: "Vorstand will bei der Ergebnispräsentation dabei sein — Folien unbedingt auf Deutsch.",
       },
-      leadId: undefined, aktuellePhaseErledigt: 1, // bewusst OHNE Trainer → sichtbare Lücke
+      module: ["KI-Grundlagen", "Copilot in Outlook & Teams"],
+      // Deliberately without trainer → visible gap on the dashboard.
     },
     {
       daten: {
         firma: "HTL Wels", name: "Prompt Engineering für Maturaklassen",
         ansprechperson: "Prof. Kerschbaum", type: "Schule", format: "dbrains x Land OÖ",
-        modus: "VOR ORT", status: "Vorbereitung", termin1: inTagen(20),
-        wsBetrag: "1800.00", sharepointUrl: sharepoint("htl-wels-prompting"),
+        modus: "ONLINE", status: "Vorbereitung", verantwortlichInternId: romana.id,
+        termin1: inTagen(16), wsBetrag: "1800.00",
+        verwendetesSlidedeck: sharepoint("Kunden/HTL-Wels/Prompting-Matura.pptx"),
+        formsVorabUrl: "https://forms.office.com/r/vorab-htl",
       },
-      leadId: undefined, coId: undefined, aktuellePhaseErledigt: 4,
+      module: ["Prompting"],
+      trainer: [{ id: thomas.id, rolle: "lead", status: "bestaetigt" }],
+    },
+    {
+      daten: {
+        firma: "TechnoWerk Linz GmbH", name: "Agentic AI Deep Dive",
+        ansprechperson: "Dr. Petra Lang", type: "Agentic AI", format: "dbrains x SCCH",
+        modus: "ONLINE", status: "Angebot", verantwortlichInternId: leon.id,
+        termin1: inTagen(30), wsBetrag: "4800.00",
+      },
+      module: ["Agentic AI Basics"],
+      // Pending request → trainer sees "Zusagen / Absagen".
+      trainer: [{ id: anna.id, rolle: "lead", status: "angefragt" }],
+    },
+    {
+      daten: {
+        firma: "Kanzlei Mayr & Partner", name: "KI in der Rechtsberatung — Keynote",
+        ansprechperson: "Dr. Mayr", type: "Keynote", modus: "VOR ORT", ort: "Wien, Graben 12",
+        status: "Angebot", verantwortlichInternId: null, termin1: inTagen(45), wsBetrag: "1500.00",
+      },
+      module: ["KI-Recht / AI Act"],
     },
     {
       daten: {
         firma: "Stadtgemeinde Traun", name: "KI-Werkzeuge in der Verwaltung",
         ansprechperson: "Mag. Hofstätter", type: "Beratung", modus: "Webex",
-        status: "Vorbereitung", termin1: inTagen(33), wsBetrag: "3600.00",
+        status: "Vorabstimmung", verantwortlichInternId: romana.id,
       },
-      leadId: undefined, aktuellePhaseErledigt: 0,
     },
-    // --- Durchführung
-    {
-      daten: {
-        firma: "Möbelwerk Steiner GmbH", name: "Ideation-Sprint: KI-Anwendungsfälle",
-        ansprechperson: "Klaus Steiner", type: "Ideation", modus: "VOR ORT",
-        status: "Durchführung", termin1: inTagen(0, 8), wsBetrag: "2900.00",
-        sharepointUrl: sharepoint("steiner-ideation"),
-      },
-      leadId: undefined, aktuellePhaseErledigt: 1,
-    },
-    // --- Nachbereitung
     {
       daten: {
         firma: "VersicherungsPlus AG", name: "KI-Kompetenz für Führungskräfte",
         ansprechperson: "Mag. Doris Ecker", type: "Academy", format: "dbrains academy",
-        modus: "VOR ORT", status: "Nachbereitung", termin1: inTagen(-6),
-        wsBetrag: "6400.00", rechnungStatus: "senden",
-        sharepointUrl: sharepoint("versicherungsplus-fk"),
-        formsFeedbackUrl: "https://forms.office.com/r/beispiel2",
+        modus: "VOR ORT", ort: "Linz, Zentrale", status: "Nachbereitung",
+        verantwortlichInternId: romana.id, termin1: inTagen(-2), wsBetrag: "6400.00",
+        rechnungStatus: "senden",
+        verwendetesSlidedeck: sharepoint("Kunden/VersicherungsPlus/FK-Workshop.pptx"),
+        formsFeedbackUrl: "https://forms.office.com/r/feedback-vplus",
       },
-      leadId: undefined, aktuellePhaseErledigt: 1,
+      module: ["KI-Grundlagen", "KI-Recht / AI Act"],
+      trainer: [{ id: thomas.id, rolle: "lead", status: "bestaetigt" }],
+      offenLassen: ["Teilnehmer-Feedback", "Follow-up"],
     },
     {
       daten: {
         firma: "Logistik Pichler GmbH", name: "Automatisierung im Backoffice",
         ansprechperson: "Eva Pichler", type: "Beratung", modus: "ONLINE",
-        status: "Nachbereitung", termin1: inTagen(-12), wsBetrag: "3100.00",
-        rechnungStatus: "warten",
+        teamsMeetingUrl: "https://teams.microsoft.com/l/meetup-join/beispiel",
+        status: "Nachbereitung", verantwortlichInternId: martin.id, termin1: inTagen(-12),
+        wsBetrag: "3100.00", formsFeedbackUrl: "https://forms.office.com/r/feedback-pichler",
+        verwendetesSlidedeck: sharepoint("Kunden/Pichler/Backoffice.pptx"),
       },
-      leadId: undefined, aktuellePhaseErledigt: 3,
-    },
-    // --- Angebot
-    {
-      daten: {
-        firma: "Kanzlei Mayr & Partner", name: "KI in der Rechtsberatung — Keynote",
-        ansprechperson: "Dr. Mayr", type: "Keynote", modus: "VOR ORT",
-        status: "Angebot", termin1: inTagen(45), wsBetrag: "1500.00",
-      },
-      leadId: undefined, aktuellePhaseErledigt: 1,
+      module: ["Copilot in Outlook & Teams"],
+      trainer: [{ id: anna.id, rolle: "lead", status: "bestaetigt" }],
+      offenLassen: ["Rechnung"],
+      feedbackVon: anna.id,
     },
     {
       daten: {
-        firma: "Bäckerei Wimmer", name: "Digitalisierung im Handwerk",
-        ansprechperson: "Josef Wimmer", type: "Beratung", modus: "VOR ORT",
-        status: "Angebot", termin1: inTagen(60), wsBetrag: "2200.00",
+        firma: "Alpenland Maschinenbau GmbH", name: "KI-Einführung Produktionsteam",
+        type: "Maßgeschneiderter Workshop", modus: "VOR ORT", status: "Done",
+        verantwortlichInternId: romana.id, termin1: inTagen(-40), wsBetrag: "4100.00",
+        rechnungStatus: "gesendet", trainerRe: "überwiesen",
+        verwendetesSlidedeck: sharepoint("Kunden/Alpenland/Produktion.pptx"),
       },
-      aktuellePhaseErledigt: 0,
-    },
-    {
-      daten: {
-        firma: "TechnoWerk Linz GmbH", name: "Agentic AI Aufbau-Workshop",
-        ansprechperson: "Dr. Petra Lang", type: "Agentic AI", format: "dbrains x SCCH",
-        modus: "SCCH", status: "Angebot", wsBetrag: "5400.00",
-      },
-      aktuellePhaseErledigt: 0,
-    },
-    // --- Vorabstimmung
-    {
-      daten: {
-        firma: "Energie OÖ AG", name: "Follow-up: KI-Governance",
-        ansprechperson: "Herbert Aigner", type: "Beratung", status: "Vorabstimmung",
-      },
-    },
-    {
-      daten: {
-        firma: "HTL Wels", name: "Lehrkräfte-Fortbildung KI im Unterricht",
-        ansprechperson: "Prof. Kerschbaum", type: "Schule", format: "dbrains x Land OÖ",
-        status: "Vorabstimmung",
-      },
-    },
-    // --- On-Hold
-    {
-      daten: {
-        firma: "Stadtgemeinde Traun", name: "Bürgerservice-Chatbot Schulung",
-        ansprechperson: "Mag. Hofstätter", type: "Maßgeschneiderter Workshop",
-        status: "On-Hold/Abgesagt",
-      },
+      module: ["KI-Grundlagen"],
+      trainer: [{ id: leonTrainer.id, rolle: "lead", status: "bestaetigt" }],
     },
     {
       daten: {
         firma: "Bäckerei Wimmer", name: "Social-Media-Content mit KI",
-        type: "Ideation", status: "On-Hold/Abgesagt",
+        type: "Ideation", status: "On-Hold", verantwortlichInternId: martin.id,
+        termin1: inTagen(60),
       },
+    },
+    {
+      daten: {
+        firma: "TechnoWerk Linz GmbH", name: "Agentic AI Grundlagen 2025",
+        type: "Agentic AI", status: "Done", termin1: inTagen(-300), wsBetrag: "4900.00",
+        rechnungStatus: "gesendet", trainerRe: "überwiesen",
+      },
+      archiviert: true,
     },
   ];
 
-  // Done workshops from the last months.
-  const doneWorkshops: SeedWorkshop[] = [
-    { daten: { firma: "Alpenland Maschinenbau GmbH", name: "KI-Einführung Produktionsteam", type: "Maßgeschneiderter Workshop", modus: "VOR ORT", status: "Done", termin1: inTagen(-30), wsBetrag: "4100.00", rechnungStatus: "gesendet", trainerRe: "überwiesen", verwendetesSlidedeck: sharepoint("alpenland-produktion/slides.pptx") }, leadId: undefined },
-    { daten: { firma: "VersicherungsPlus AG", name: "Prompt-Basics für Sachbearbeitung", type: "Academy", format: "dbrains academy", modus: "ONLINE", status: "Done", termin1: inTagen(-45), wsBetrag: "2800.00", rechnungStatus: "gesendet", trainerRe: "überwiesen" }, leadId: undefined },
-    { daten: { firma: "HTL Wels", name: "KI-Projektwoche 5. Jahrgang", type: "Schule", format: "dbrains x Land OÖ", modus: "VOR ORT", status: "Done", termin1: inTagen(-60), wsBetrag: "2000.00", rechnungStatus: "gesendet", trainerRe: "überwiesen" }, leadId: undefined },
-    { daten: { firma: "Kanzlei Mayr & Partner", name: "Keynote Kanzleitag 2026", type: "Keynote", modus: "VOR ORT", status: "Done", termin1: inTagen(-75), wsBetrag: "1500.00", rechnungStatus: "gesendet", trainerRe: "offen" }, leadId: undefined },
-    { daten: { firma: "Logistik Pichler GmbH", name: "KI-Potenzialanalyse", type: "Beratung", modus: "ONLINE", status: "Done", termin1: inTagen(-90), wsBetrag: "3300.00", rechnungStatus: "gesendet", trainerRe: "überwiesen" }, leadId: undefined },
-    // Done, aber Rechnung nie gestellt → soll auffallen!
-    { daten: { firma: "Möbelwerk Steiner GmbH", name: "ChatGPT im Vertrieb", type: "Maßgeschneiderter Workshop", modus: "VOR ORT", status: "Done", termin1: inTagen(-21), wsBetrag: "2600.00", rechnungStatus: "warten" }, leadId: undefined },
-    { daten: { firma: "TechnoWerk Linz GmbH", name: "Agentic AI Grundlagen", type: "Agentic AI", format: "dbrains x SCCH", modus: "SCCH", status: "Done", termin1: inTagen(-40), wsBetrag: "4900.00", rechnungStatus: "gesendet", trainerRe: "überwiesen" }, leadId: undefined },
-    { daten: { firma: "Energie OÖ AG", name: "KI-Awareness Belegschaft", type: "Academy", format: "dbrains academy", modus: "ONLINE", status: "Done", termin1: inTagen(-55), wsBetrag: "3800.00", rechnungStatus: "gesendet", trainerRe: "überwiesen" }, leadId: undefined },
-  ];
-
-  // Rotate trainers across workshops: Trainerin, Thomas, Leon, Romana.
-  const rotation = [trainerin.id, thomas.id, leonTrainer.id, romanaTrainer.id];
-  const alle = [...seedWorkshops, ...doneWorkshops];
-  alle.forEach((w, i) => {
-    // Workshop 1 (KI-Grundlagen) fix an Trainerin (Demo Trainer-Sicht),
-    // Workshop 2 (Agentic AI Deep Dive) und Nr. 3 bewusst ohne Lead.
-    if (i === 0) { w.leadId = trainerin.id; w.coId = romanaTrainer.id; return; }
-    if (i === 1 || i === 2) { w.leadId = undefined; return; }
-    if (w.daten.status === "On-Hold/Abgesagt" || w.daten.status === "Vorabstimmung") return;
-    w.leadId = rotation[i % rotation.length];
-    if (w.leadId === trainerin.id) w.coId = leonTrainer.id;
-  });
-
-  for (const eintrag of alle) {
+  const idNach = new Map<string, number>();
+  for (const eintrag of seedWorkshops) {
     const { firma, ...werte } = eintrag.daten;
+    // Seed dates are full days 09:00–17:00 like the form default.
+    const bis17 = (d: Date | null | undefined) => {
+      if (!d) return null;
+      const ende = new Date(d);
+      ende.setHours(17, 0, 0, 0);
+      return ende;
+    };
+    werte.termin1Ende = bis17(werte.termin1);
+    werte.termin2Ende = bis17(werte.termin2);
     const [neu] = await db
       .insert(workshop)
       .values({ ...werte, unternehmenId: kundeNach.get(firma)! })
       .returning();
+    idNach.set(neu.name, neu.id);
 
-    if (eintrag.leadId) {
-      await db.insert(zuweisung).values({
-        workshopId: neu.id, trainerId: eintrag.leadId, rolle: "lead", status: "bestaetigt",
-      });
+    if (eintrag.module?.length) {
+      await db
+        .insert(workshopModul)
+        .values(eintrag.module.map((m) => ({ workshopId: neu.id, modulId: modulNach.get(m)! })));
     }
-    if (eintrag.coId) {
-      await db.insert(zuweisung).values({
-        workshopId: neu.id, trainerId: eintrag.coId, rolle: "co", status: "bestaetigt",
-      });
+    for (const t of eintrag.trainer ?? []) {
+      await db.insert(zuweisung).values({ workshopId: neu.id, trainerId: t.id, rolle: t.rolle, status: t.status });
     }
-
-    // Instantiate the checklist history up to the current phase and tick off
-    // everything from completed phases plus a slice of the current phase.
-    const phaseIndex = PHASEN_REIHENFOLGE.indexOf(neu.status);
-    if (phaseIndex < 0) continue; // On-Hold/Abgesagt: keine Checkliste
-
-    // Done workshops: only the two with open invoices keep a visible tail.
-    const istDone = neu.status === "Done";
-    const brauchtNachbereitung = istDone && werte.rechnungStatus === "warten";
-    if (istDone && !brauchtNachbereitung) continue;
-
-    const phasen = istDone
-      ? ["Nachbereitung" as const]
-      : PHASEN_REIHENFOLGE.slice(0, phaseIndex + 1);
-    for (const phase of phasen) {
-      await instanziiereCheckpunkte(neu.id, phase);
+    if (eintrag.archiviert) {
+      await db.update(workshop).set({ archiviertAm: jetzt }).where(eq(workshop.id, neu.id));
+      continue;
     }
 
-    const punkte = await db
-      .select({ id: checkpunkt.id, phase: checkpunktVorlage.phase })
+    // Run the real automation: checklist, calendar, trainer mails.
+    await nachWorkshopAenderung(neu.id, null, jetzt);
+
+    // Pretend the team did its job so far — apart from the deliberate gaps.
+    const faellige = await db
+      .select({ id: checkpunkt.id, titel: checkpunktVorlage.titel })
       .from(checkpunkt)
       .innerJoin(checkpunktVorlage, eq(checkpunkt.vorlagePunktId, checkpunktVorlage.id))
-      .where(eq(checkpunkt.workshopId, neu.id));
-
-    const erledigteIds: number[] = [];
-    let aktuelleErledigt = 0;
-    for (const punkt of punkte) {
-      const punktPhaseIndex = PHASEN_REIHENFOLGE.indexOf(punkt.phase);
-      const istFruehere = !istDone && punktPhaseIndex < phaseIndex;
-      const istAktuelle = istDone
-        ? punkt.phase === "Nachbereitung"
-        : punktPhaseIndex === phaseIndex;
-      if (istFruehere) {
-        erledigteIds.push(punkt.id);
-      } else if (istAktuelle && aktuelleErledigt < (eintrag.aktuellePhaseErledigt ?? 0)) {
-        erledigteIds.push(punkt.id);
-        aktuelleErledigt++;
-      }
-    }
-    if (erledigteIds.length > 0) {
+      .where(
+        and(
+          eq(checkpunkt.workshopId, neu.id),
+          eq(checkpunkt.status, "offen"),
+          isNotNull(checkpunkt.faelligAm),
+          lt(checkpunkt.faelligAm, neu.status === "Done" ? inTagen(365) : inTagen(0, 0)),
+        ),
+      );
+    const erledigen = faellige
+      .filter((p) => !(eintrag.offenLassen ?? []).some((prefix) => p.titel.startsWith(prefix)))
+      .map((p) => p.id);
+    if (erledigen.length > 0) {
       await db
         .update(checkpunkt)
-        .set({ status: "erledigt", erledigtVia: "manuell" })
-        .where(inArray(checkpunkt.id, erledigteIds));
+        .set({ status: "erledigt", erledigtVia: "manuell", erledigtVonId: romana.id, erledigtAm: jetzt })
+        .where(inArray(checkpunkt.id, erledigen));
+    }
+
+    if (eintrag.feedbackVon) {
+      await db.insert(trainerFeedback).values({
+        workshopId: neu.id,
+        trainerId: eintrag.feedbackVon,
+        abwicklungNote: 5,
+        abwicklungText: "Alles top organisiert, Infos kamen rechtzeitig.",
+        verlaufNote: 4,
+        verlaufText: "Gruppe sehr interessiert, viele Fragen zu Datenschutz.",
+        sonstiges: "Beamer im Raum war etwas schwach.",
+      });
     }
   }
 
-  // Give open team items an owner (Romana) so reminders have someone to mail
-  // — except for the workshop that deliberately has no trainer yet: its gaps
-  // should stay visible.
-  const [wsOhneTrainer] = await db
+  // Past workshops: their trainers got the info package back then.
+  const vergangene = await db
     .select({ id: workshop.id })
     .from(workshop)
-    .where(eq(workshop.name, "KI im Kundenservice — Pilotworkshop"))
-    .limit(1);
-  const offeneOhneVerantwortung = await db
-    .select({ id: checkpunkt.id, workshopId: checkpunkt.workshopId })
-    .from(checkpunkt)
+    .where(lt(workshop.termin1, jetzt));
+  await db
+    .update(zuweisung)
+    .set({ infomailGesendetAm: inTagen(-50) })
     .where(
-      and(eq(checkpunkt.status, "offen"), isNull(checkpunkt.verantwortlichUserId)),
+      and(
+        eq(zuweisung.status, "bestaetigt"),
+        inArray(zuweisung.workshopId, vergangene.map((v) => v.id)),
+      ),
     );
-  const zuRomana = offeneOhneVerantwortung
-    .filter((p) => p.workshopId !== wsOhneTrainer.id)
-    .map((p) => p.id);
-  if (zuRomana.length > 0) {
-    await db
-      .update(checkpunkt)
-      .set({ verantwortlichUserId: romana.id })
-      .where(inArray(checkpunkt.id, zuRomana));
-  }
 
-  // --- Thread-Kommentare ----------------------------------------------------
-  const [wsLehrlinge] = await db
-    .select({ id: workshop.id })
-    .from(workshop)
-    .where(eq(workshop.name, "KI-Grundlagen für Lehrlinge"))
-    .limit(1);
-  const [wsFuehrung] = await db
-    .select({ id: workshop.id })
-    .from(workshop)
-    .where(eq(workshop.name, "KI-Kompetenz für Führungskräfte"))
-    .limit(1);
-
-  await db.insert(threadKommentar).values([
-    {
-      workshopId: wsLehrlinge.id, autorId: romana.id,
-      text: "Kunde hat angefragt, ob wir die Gruppe teilen können — 24 Lehrlinge sind zu viele für einen Raum. Ich kläre einen zweiten Termin.",
-    },
-    {
-      workshopId: wsLehrlinge.id, autorId: trainerinNutzer.id,
-      text: "Passt für mich! Ich würde dann beide Gruppen übernehmen. Agenda-Entwurf lade ich bis Freitag in SharePoint hoch.",
-    },
-    {
-      workshopId: wsLehrlinge.id, autorId: leon.id,
-      text: "Super. Denkt an die Einverständniserklärungen — sind bei Minderjährigen Pflicht (steht in der Checkliste).",
-    },
-    {
-      workshopId: wsFuehrung.id, autorId: leon.id,
-      text: "Feedback vom Vorstand war sehr positiv. Follow-up-Angebot für Q1 vorbereiten?",
-    },
+  // --- Change-Log ----------------------------------------------------------
+  const pichler = idNach.get("Automatisierung im Backoffice")!;
+  const vplus = idNach.get("KI-Kompetenz für Führungskräfte")!;
+  const alpenlandAlt = idNach.get("KI-Einführung Produktionsteam")!;
+  await db
+    .insert(vorschlag)
+    .values([
+      { workshopId: pichler, modulId: modulNach.get("Copilot in Outlook & Teams")!, text: "Folie 14: Screenshot zeigt noch das alte Copilot-Menü — neu aufnehmen.", erstelltVonId: annaNutzer.id },
+      { workshopId: pichler, modulId: null, text: "Kundenbeispiel Lieferschein-Erkennung hat super funktioniert — für ähnliche Kunden merken.", erstelltVonId: annaNutzer.id },
+      { workshopId: vplus, modulId: modulNach.get("KI-Recht / AI Act")!, text: "AI-Act-Fristen aktualisieren (Stand Q3).", erstelltVonId: thomasNutzer.id },
+      { workshopId: alpenlandAlt, modulId: modulNach.get("KI-Grundlagen")!, text: "Übung „Halluzinationen erkennen“ dauert länger als geplant — 10 Minuten mehr einplanen.", erstelltVonId: leon.id, status: "umgesetzt", statusGeaendertAm: inTagen(-20), statusGeaendertVonId: leon.id },
+    ]);
+  await db.insert(aenderung).values([
+    { workshopId: idNach.get("KI-Grundlagen für Lehrlinge")!, modulId: modulNach.get("KI-Grundlagen")!, text: "Übung „Halluzinationen erkennen“ auf 25 Minuten verlängert, Agenda angepasst.", erstelltVonId: annaNutzer.id, vorschlagId: null },
+    { workshopId: idNach.get("Prompt Engineering für Maturaklassen")!, modulId: null, text: "Beispiele auf Maturathemen (Deutsch, Geschichte) umgestellt.", erstelltVonId: thomasNutzer.id },
   ]);
 
-  // One ad-hoc checklist item (no template behind it).
-  await db.insert(checkpunkt).values({
-    workshopId: wsLehrlinge.id,
-    titel: "Zweiten Raum für Gruppe B organisieren",
-    phase: "Vorbereitung",
-    faelligAm: inTagen(4),
-    verantwortlichUserId: romana.id,
-  });
+  // --- Wiederkehrende Erinnerungen ------------------------------------------
+  await db.insert(wiederkehrendeErinnerung).values([
+    {
+      titel: "Trainer-Feedbackrunde terminieren und Einladung verschicken",
+      rhythmus: "monatlich_erster_montag",
+      naechsteFaelligkeit: ersterMontagNaechsterMonat(),
+      empfaengerId: leon.id,
+      link: "http://localhost:3000/change-log",
+      notiz: "Agenda: offene Vorschläge im Change-Log",
+    },
+    {
+      titel: "Microsoft-Secret der Hub-App erneuern",
+      rhythmus: "jaehrlich",
+      naechsteFaelligkeit: inTagen(330),
+      empfaengerId: leon.id,
+      notiz: "Läuft nach spätestens 24 Monaten ab — Erneuerung in Entra, dann im Server eintragen.",
+    },
+  ]);
 
   return "seeded";
 }

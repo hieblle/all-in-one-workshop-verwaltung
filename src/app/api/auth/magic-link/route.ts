@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { sendMail } from "@/integrations/graph/mail";
+import { getJetzt } from "@/lib/einstellungen";
+import { HUB_URL } from "@/lib/konfig";
 import { createMagicLinkToken, MAGIC_LINK_TTL_MINUTES } from "@/lib/magic-link";
+import { queueMail } from "@/lib/postausgang";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { magicLinkRequestSchema } from "@/lib/validation";
 
@@ -33,12 +35,19 @@ export async function POST(request: Request) {
 
   const result = await createMagicLinkToken(parsed.data.email);
   if (result) {
-    const baseUrl = process.env.AUTH_URL ?? "http://localhost:3000";
-    const link = `${baseUrl}/login/magic?token=${result.rawToken}`;
-    await sendMail({
-      to: result.nutzer.email,
-      subject: "Dein Anmelde-Link – dbrains Workshop-Hub",
-      text: `Hallo ${result.nutzer.name},\n\nmit diesem Link kannst du dich anmelden (gültig für ${MAGIC_LINK_TTL_MINUTES} Minuten, einmalig verwendbar):\n\n${link}\n\nFalls du keine Anmeldung angefordert hast, ignoriere diese E-Mail.`,
+    const link = `${HUB_URL}/login/magic?token=${result.rawToken}`;
+    // The Postausgang keeps a protocol of every mail — but never the live
+    // login token. Until mails go out (stage 3), the link is only printed to
+    // the dev server console.
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[magic-link] ${result.nutzer.email}: ${link}`);
+    }
+    await queueMail({
+      anlass: "login_link",
+      jetzt: await getJetzt(),
+      an: result.nutzer.email,
+      betreff: "Dein Anmelde-Link – dbrains Workshop-Hub",
+      text: `Hallo ${result.nutzer.name},\n\nmit diesem Link kannst du dich anmelden (gültig für ${MAGIC_LINK_TTL_MINUTES} Minuten, einmalig verwendbar):\n\n${HUB_URL}/login/magic?token=[nicht gespeichert]\n\nFalls du keine Anmeldung angefordert hast, ignoriere diese E-Mail.`,
     });
   }
 

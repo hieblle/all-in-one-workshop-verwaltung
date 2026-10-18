@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import type { Session } from "next-auth";
 import { db } from "@/db";
 import { trainer, zuweisung, type NutzerRolle } from "@/db/schema";
@@ -16,8 +16,10 @@ export function isTeamRolle(rolle: NutzerRolle | undefined): boolean {
 
 /**
  * Central access check for trainer roles (see CLAUDE.md): every query on
- * behalf of a trainer MUST pass through this guard. External trainers only
- * see workshops they are assigned to; admin/team have full access.
+ * behalf of a trainer MUST pass through this guard. Trainers only see
+ * workshops they are assigned to (requested or confirmed — a trainer who
+ * declined loses access), and only while their trainer profile is active.
+ * Admin/team have full access.
  *
  * Throws AccessDeniedError — callers translate this to a 403/notFound.
  */
@@ -40,6 +42,7 @@ export async function assertTrainerAccess(
         eq(zuweisung.workshopId, workshopId),
         eq(trainer.nutzerId, user.nutzerId),
         eq(trainer.aktiv, true),
+        ne(zuweisung.status, "abgesagt"),
       ),
     )
     .limit(1);

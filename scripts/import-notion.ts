@@ -1,4 +1,4 @@
-// One-time import of the Notion "Workshop Liste" (PLAN.md Phase 1).
+// One-time import of the Notion "Workshop Liste" (optional, SPEC §9).
 //
 // Usage:
 //   npm run import:notion            -- dry run, prints what would be imported
@@ -12,7 +12,7 @@ import { db } from "../src/db";
 import { kunde, workshop } from "../src/db/schema";
 import { fetchAllePages } from "../src/integrations/notion/client";
 import { mapNotionPage } from "../src/integrations/notion/mapping";
-import { instanziiereCheckpunkte } from "../src/lib/checklist";
+import { synchronisiereCheckliste } from "../src/lib/checklist";
 
 const AKTIVE_STATUS = new Set([
   "Vorabstimmung",
@@ -98,7 +98,7 @@ async function main() {
     // Checklists only for workshops still in the running process — importing
     // finished workshops must not create noise.
     if (AKTIVE_STATUS.has(neu.status)) {
-      await instanziiereCheckpunkte(neu.id, neu.status);
+      await synchronisiereCheckliste(neu.id, new Date());
     }
     console.log(`OK    ${label} → id ${neu.id}`);
     importiert++;

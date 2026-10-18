@@ -82,6 +82,45 @@ describe("workshopFormSchema", () => {
   });
 });
 
+describe("workshopFormSchema — Termine", () => {
+  const basis = { name: "Test", neueFirma: "Firma", type: "Beratung" };
+
+  it("defaults a date to 09:00–17:00", () => {
+    const d = workshopFormSchema.parse({ ...basis, termin1: "2026-11-03" });
+    expect(d.termin1?.getHours()).toBe(9);
+    expect(d.termin1Ende?.getHours()).toBe(17);
+    expect(d.termin1Ende?.getDate()).toBe(3);
+  });
+
+  it("takes explicit start and end times", () => {
+    const d = workshopFormSchema.parse({
+      ...basis,
+      termin2: "2026-11-04",
+      termin2Von: "13:30",
+      termin2Bis: "16:00",
+    });
+    expect(d.termin2?.getHours()).toBe(13);
+    expect(d.termin2?.getMinutes()).toBe(30);
+    expect(d.termin2Ende?.getHours()).toBe(16);
+  });
+
+  it("ignores times without a date", () => {
+    const d = workshopFormSchema.parse({ ...basis, termin1: "", termin1Von: "09:00" });
+    expect(d.termin1).toBeUndefined();
+    expect(d.termin1Ende).toBeUndefined();
+  });
+
+  it("rejects an end before the start", () => {
+    const r = workshopFormSchema.safeParse({
+      ...basis,
+      termin1: "2026-11-03",
+      termin1Von: "15:00",
+      termin1Bis: "10:00",
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
 describe("workshopFilterSchema", () => {
   it("defaults to the list view with no filters", () => {
     const ergebnis = workshopFilterSchema.parse({});

@@ -105,9 +105,16 @@ export function mapNotionPage(page: NotionPage): GemappterWorkshop {
   );
   if (!type) warnungen.push("Type fehlt oder unbekannt — Zeile wird übersprungen");
 
+  // Notion combines "On-Hold/Abgesagt"; the hub splits it (SPEC §6) — an
+  // imported row lands on On-Hold and the team decides per workshop.
+  const statusRoh = p("status");
   const status =
-    alsEnum(p("status"), workshopStatusEnum.enumValues, "Status", warnungen) ??
-    "Vorabstimmung";
+    alsEnum(
+      statusRoh === "On-Hold/Abgesagt" ? "On-Hold" : statusRoh,
+      workshopStatusEnum.enumValues,
+      "Status",
+      warnungen,
+    ) ?? "Vorabstimmung";
 
   const betragRoh = p("wsBetrag");
 

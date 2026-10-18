@@ -1,10 +1,11 @@
-import { asc } from "drizzle-orm";
+import { asc, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { nutzer, trainer } from "@/db/schema";
 import { requireTeam } from "@/lib/session";
 import {
   createNutzerAction,
   createTrainerAction,
+  deleteTrainerAction,
   updateTrainerAction,
 } from "./actions";
 
@@ -17,6 +18,12 @@ const ROLLE_LABEL: Record<string, string> = {
   trainer: "Trainer:in",
 };
 
+const FEHLER: Record<string, string> = {
+  email: "Diese E-Mail-Adresse ist bereits vergeben.",
+  trainer_genutzt:
+    "Dieser Trainer ist Workshops zugewiesen und kann nicht gelöscht werden — bitte stattdessen deaktivieren (archivieren).",
+};
+
 export default async function TeamPage({
   searchParams,
 }: {
@@ -26,30 +33,31 @@ export default async function TeamPage({
   const { fehler } = await searchParams;
   const istAdmin = session.user.rolle === "admin";
 
-  const alleTrainer = await db.select().from(trainer).orderBy(asc(trainer.name));
-  const alleNutzer = await db
+  const alleTrainer = await db.select().from(trainer).orderBy(asc(trainer.aktiv), asc(trainer.name));
+  const teamKonten = await db
     .select({ id: nutzer.id, name: nutzer.name, email: nutzer.email, rolle: nutzer.rolle })
     .from(nutzer)
+    .where(inArray(nutzer.rolle, ["admin", "team"]))
     .orderBy(asc(nutzer.name));
 
   return (
     <div className="space-y-10">
-      {fehler === "email" && (
+      {fehler && FEHLER[fehler] && (
         <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          Diese E-Mail-Adresse ist bereits vergeben.
+          {FEHLER[fehler]}
         </p>
       )}
 
       <div>
         <h1 className="text-xl font-semibold">Team & Trainer</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Trainer mit Login-Zugang melden sich per Magic-Link an und sehen nur
-          ihre zugewiesenen Workshops.
+          Jeder Trainer hat ein Konto: externe Trainer melden sich per Login-Link an und
+          sehen nur ihre eigenen Workshops. Deaktivieren beendet den Zugang sofort.
         </p>
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-medium">Trainer ({alleTrainer.length})</h2>
+        <h2 className="font-medium">Trainer ({alleTrainer.filter((t) => t.aktiv).length} aktiv)</h2>
         <ul className="divide-y divide-zinc-100 rounded-md border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
           {alleTrainer.map((t) => (
             <li key={t.id} className="px-3 py-2 text-sm">
@@ -59,14 +67,8 @@ export default async function TeamPage({
                 </span>
                 <span className="text-xs text-zinc-500">
                   {t.email} · {t.extern ? "extern" : "intern"}
-                  {t.nutzerId ? " · Login aktiv" : " · kein Login"}
                   {t.aktiv ? "" : " · deaktiviert"}
                 </span>
-                {t.verfuegbarkeitNotiz && (
-                  <span className="w-full text-xs text-zinc-500 sm:ml-auto sm:w-auto">
-                    Verfügbarkeit: {t.verfuegbarkeitNotiz}
-                  </span>
-                )}
               </div>
               <details className="mt-1">
                 <summary className="cursor-pointer text-xs text-zinc-500 hover:underline">
@@ -78,12 +80,6 @@ export default async function TeamPage({
                 >
                   <input name="name" required defaultValue={t.name} className={`${inputKlasse} w-44`} />
                   <input name="email" type="email" required defaultValue={t.email} className={`${inputKlasse} w-56`} />
-                  <input
-                    name="verfuegbarkeitNotiz"
-                    defaultValue={t.verfuegbarkeitNotiz ?? ""}
-                    placeholder="Verfügbarkeit"
-                    className={`${inputKlasse} w-56`}
-                  />
                   <label className="flex items-center gap-1 text-xs">
                     <input type="checkbox" name="extern" defaultChecked={t.extern} /> extern
                   </label>
@@ -97,6 +93,13 @@ export default async function TeamPage({
                     Speichern
                   </button>
                 </form>
+                {istAdmin && (
+                  <form action={deleteTrainerAction.bind(null, t.id)} className="mt-2">
+                    <button type="submit" className="text-xs text-red-600 hover:underline">
+                      Endgültig löschen (nur ohne Workshops)
+                    </button>
+                  </form>
+                )}
               </details>
             </li>
           ))}
@@ -107,16 +110,8 @@ export default async function TeamPage({
           <form action={createTrainerAction} className="mt-3 flex flex-wrap items-center gap-2">
             <input name="name" required placeholder="Name" className={`${inputKlasse} w-44`} />
             <input name="email" type="email" required placeholder="E-Mail" className={`${inputKlasse} w-56`} />
-            <input
-              name="verfuegbarkeitNotiz"
-              placeholder="Verfügbarkeit (optional)"
-              className={`${inputKlasse} w-56`}
-            />
             <label className="flex items-center gap-1 text-xs">
               <input type="checkbox" name="extern" defaultChecked /> extern
-            </label>
-            <label className="flex items-center gap-1 text-xs">
-              <input type="checkbox" name="mitLogin" defaultChecked /> Login-Zugang (Magic-Link)
             </label>
             <button
               type="submit"
@@ -125,13 +120,17 @@ export default async function TeamPage({
               Anlegen
             </button>
           </form>
+          <p className="mt-2 text-xs text-zinc-500">
+            Interne Trainer mit der Adresse ihres Team-Kontos anlegen — sie nutzen dann ihr
+            Microsoft-Login.
+          </p>
         </details>
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-medium">Nutzer-Konten ({alleNutzer.length})</h2>
+        <h2 className="font-medium">Team-Konten ({teamKonten.length})</h2>
         <ul className="divide-y divide-zinc-100 rounded-md border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
-          {alleNutzer.map((n) => (
+          {teamKonten.map((n) => (
             <li key={n.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
               <span className="font-medium">{n.name}</span>
               <span className="text-xs text-zinc-500">{n.email}</span>
@@ -144,12 +143,10 @@ export default async function TeamPage({
 
         {istAdmin ? (
           <details className="rounded-lg border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
-            <summary className="cursor-pointer text-sm font-medium">
-              + Nutzer-Konto anlegen (Team-Mitglied)
-            </summary>
+            <summary className="cursor-pointer text-sm font-medium">+ Team-Konto anlegen</summary>
             <p className="mt-2 text-xs text-zinc-500">
-              Team-Konten melden sich per Microsoft (Entra ID) an — die E-Mail
-              muss der Microsoft-Adresse entsprechen. Es gibt kein Self-Signup.
+              Team-Konten melden sich per Microsoft an — die E-Mail muss der
+              Microsoft-Adresse im dbrains-Mandanten entsprechen. Es gibt kein Self-Signup.
             </p>
             <form action={createNutzerAction} className="mt-3 flex flex-wrap items-center gap-2">
               <input name="name" required placeholder="Name" className={`${inputKlasse} w-44`} />
@@ -157,7 +154,6 @@ export default async function TeamPage({
               <select name="rolle" defaultValue="team" className={inputKlasse}>
                 <option value="team">Team</option>
                 <option value="admin">Admin</option>
-                <option value="trainer">Trainer:in</option>
               </select>
               <button
                 type="submit"
@@ -168,9 +164,7 @@ export default async function TeamPage({
             </form>
           </details>
         ) : (
-          <p className="text-xs text-zinc-500">
-            Neue Nutzer-Konten können nur Admins anlegen.
-          </p>
+          <p className="text-xs text-zinc-500">Neue Team-Konten können nur Admins anlegen.</p>
         )}
       </section>
     </div>

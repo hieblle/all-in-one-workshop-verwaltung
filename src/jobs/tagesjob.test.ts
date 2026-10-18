@@ -1,9 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/db", () => ({ db: {} }));
-vi.mock("@/integrations/graph/mail", () => ({ sendMail: vi.fn() }));
 
-const { istEskalationsfall } = await import("./reminders");
+const { istEskalationsfall } = await import("./tagesjob");
 
 describe("istEskalationsfall", () => {
   const now = new Date("2026-09-10T08:00:00");

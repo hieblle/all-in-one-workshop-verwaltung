@@ -22,6 +22,9 @@ FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# Workshop times are entered and shown in Austrian local time.
+RUN apk add --no-cache tzdata
+ENV TZ=Europe/Vienna
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --chown=nextjs:nodejs package.json next.config.mjs ./

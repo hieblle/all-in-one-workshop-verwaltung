@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "crypto";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
 import { nutzer, trainer, type Nutzer } from "@/db/schema";
 
@@ -22,39 +22,33 @@ export function isExpired(expiresAt: Date | null, now: Date = new Date()): boole
   return expiresAt === null || expiresAt.getTime() <= now.getTime();
 }
 
+// Trainer logins require an ACTIVE trainer profile: deactivating the trainer
+// record (aktiv = false) is the mechanism to revoke access.
+export async function hatAktivesTrainerProfil(nutzerId: number): Promise<boolean> {
+  const [aktiv] = await db
+    .select({ id: trainer.id })
+    .from(trainer)
+    .where(and(eq(trainer.nutzerId, nutzerId), eq(trainer.aktiv, true)))
+    .limit(1);
+  return aktiv !== undefined;
+}
+
 /**
- * Creates a single-use magic link token for an external trainer account.
- * Returns null if no active trainer account exists for the email — callers
- * must not leak that difference to the client (no user enumeration).
- *
- * Development only: all roles may use the magic link, so the app can be
- * tested as admin/team without an Entra ID app registration.
+ * Creates a single-use magic link token for a trainer account. Returns null
+ * if no active trainer account exists for the email — callers must not leak
+ * that difference to the client (no user enumeration). The team signs in via
+ * Microsoft only (SPEC §3).
  */
 export async function createMagicLinkToken(
   email: string,
 ): Promise<{ nutzer: Nutzer; rawToken: string } | null> {
-  const nurTrainer =
-    process.env.NODE_ENV === "development"
-      ? undefined
-      : eq(nutzer.rolle, "trainer");
   const [account] = await db
     .select()
     .from(nutzer)
-    .where(and(eq(nutzer.email, email.toLowerCase()), nurTrainer))
+    .where(and(eq(nutzer.email, email.toLowerCase()), eq(nutzer.rolle, "trainer")))
     .limit(1);
 
-  if (!account) return null;
-
-  // Trainer logins require an ACTIVE trainer profile: deactivating the
-  // trainer record (aktiv = false) is the mechanism to revoke access.
-  if (account.rolle === "trainer") {
-    const [aktiverTrainer] = await db
-      .select({ id: trainer.id })
-      .from(trainer)
-      .where(and(eq(trainer.nutzerId, account.id), eq(trainer.aktiv, true)))
-      .limit(1);
-    if (!aktiverTrainer) return null;
-  }
+  if (!account || !(await hatAktivesTrainerProfil(account.id))) return null;
 
   const rawToken = generateRawToken();
   await db
@@ -69,32 +63,27 @@ export async function createMagicLinkToken(
 }
 
 /**
- * Verifies and consumes a magic link token (single use). Returns the nutzer
- * on success, null on unknown/expired token.
+ * Verifies and consumes a magic link token. A single conditional UPDATE both
+ * checks and consumes it, so two parallel clicks can't both succeed.
+ * Returns the nutzer on success, null on unknown/expired/revoked.
  */
 export async function verifyMagicLinkToken(
   rawToken: string,
 ): Promise<Nutzer | null> {
   const [account] = await db
-    .select()
-    .from(nutzer)
+    .update(nutzer)
+    .set({ magicLinkToken: null, magicLinkExpiresAt: null })
     .where(
       and(
         eq(nutzer.magicLinkToken, hashToken(rawToken)),
-        isNotNull(nutzer.magicLinkToken),
+        gt(nutzer.magicLinkExpiresAt, new Date()),
       ),
     )
-    .limit(1);
+    .returning();
 
   if (!account) return null;
-
-  // Consume the token before checking expiry — a used link is dead either way.
-  await db
-    .update(nutzer)
-    .set({ magicLinkToken: null, magicLinkExpiresAt: null })
-    .where(eq(nutzer.id, account.id));
-
-  if (isExpired(account.magicLinkExpiresAt)) return null;
-
+  if (account.rolle !== "trainer" || !(await hatAktivesTrainerProfil(account.id))) {
+    return null;
+  }
   return account;
 }
