@@ -1,0 +1,61 @@
+# Deployment via Coolify (Hetzner). Also usable locally: docker compose up
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-workshop}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD setzen}@db:5432/${POSTGRES_DB:-workshop_hub}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET setzen}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      AUTH_TRUST_HOST: "true"
+      AUTH_MICROSOFT_ENTRA_ID_ID: ${AUTH_MICROSOFT_ENTRA_ID_ID:-}
+      AUTH_MICROSOFT_ENTRA_ID_SECRET: ${AUTH_MICROSOFT_ENTRA_ID_SECRET:-}
+      AUTH_MICROSOFT_ENTRA_ID_ISSUER: ${AUTH_MICROSOFT_ENTRA_ID_ISSUER:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-workshop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD setzen}
+      POSTGRES_DB: ${POSTGRES_DB:-workshop_hub}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-workshop} -d ${POSTGRES_DB:-workshop_hub}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Daily pg_dump into the db-backups volume, 14 days retention.
+  # In Coolify, prefer the built-in scheduled database backups (S3 target)
+  # and remove this service.
+  db-backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-workshop}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD setzen}
+      PGDATABASE: ${POSTGRES_DB:-workshop_hub}
+    volumes:
+      - db-backups:/backups
+      - ./scripts/backup-db.sh:/usr/local/bin/backup-db.sh:ro
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "while true; do sh /usr/local/bin/backup-db.sh /backups; sleep 86400; done",
+      ]
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  db-backups:

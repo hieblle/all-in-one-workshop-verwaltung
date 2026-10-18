@@ -1,0 +1,2252 @@
+{
+  "id": "eed51d62-4126-495d-acf3-e6db6f9d5c7f",
+  "prevId": "482fc02d-b1c7-43b8-a37d-ad7eb7de212d",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.aenderung": {
+      "name": "aenderung",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "aenderung_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "workshop_id": {
+          "name": "workshop_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modul_id": {
+          "name": "modul_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vorschlag_id": {
+          "name": "vorschlag_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "erstellt_von_id": {
+          "name": "erstellt_von_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "aenderung_workshop_id_workshop_id_fk": {
+          "name": "aenderung_workshop_id_workshop_id_fk",
+          "tableFrom": "aenderung",
+          "tableTo": "workshop",
+          "columnsFrom": [
+            "workshop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "aenderung_modul_id_modul_id_fk": {
+          "name": "aenderung_modul_id_modul_id_fk",
+          "tableFrom": "aenderung",
+          "tableTo": "modul",
+          "columnsFrom": [
+            "modul_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "aenderung_vorschlag_id_vorschlag_id_fk": {
+          "name": "aenderung_vorschlag_id_vorschlag_id_fk",
+          "tableFrom": "aenderung",
+          "tableTo": "vorschlag",
+          "columnsFrom": [
+            "vorschlag_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "aenderung_erstellt_von_id_nutzer_id_fk": {
+          "name": "aenderung_erstellt_von_id_nutzer_id_fk",
+          "tableFrom": "aenderung",
+          "tableTo": "nutzer",
+          "columnsFrom": [
+            "erstellt_von_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.trainer_feedback": {
+      "name": "trainer_feedback",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "trainer_feedback_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "workshop_id": {
+          "name": "workshop_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trainer_id": {
+          "name": "trainer_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "abwicklung_note": {
+          "name": "abwicklung_note",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "abwicklung_text": {
+          "name": "abwicklung_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verlauf_note": {
+          "name": "verlauf_note",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verlauf_text": {
+          "name": "verlauf_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sonstiges": {
+          "name": "sonstiges",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "trainer_feedback_workshop_trainer_unique": {
+          "name": "trainer_feedback_workshop_trainer_unique",
+          "columns": [
+            {
+              "expression": "workshop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trainer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "trainer_feedback_workshop_id_workshop_id_fk": {
+          "name": "trainer_feedback_workshop_id_workshop_id_fk",
+          "tableFrom": "trainer_feedback",
+          "tableTo": "workshop",
+          "columnsFrom": [
+            "workshop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "trainer_feedback_trainer_id_trainer_id_fk": {
+          "name": "trainer_feedback_trainer_id_trainer_id_fk",
+          "tableFrom": "trainer_feedback",
+          "tableTo": "trainer",
+          "columnsFrom": [
+            "trainer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vorschlag": {
+      "name": "vorschlag",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "vorschlag_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "workshop_id": {
+          "name": "workshop_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modul_id": {
+          "name": "modul_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "vorschlag_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'offen'"
+        },
+        "erstellt_von_id": {
+          "name": "erstellt_von_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status_geaendert_von_id": {
+          "name": "status_geaendert_von_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_geaendert_am": {
+          "name": "status_geaendert_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "vorschlag_workshop_id_workshop_id_fk": {
+          "name": "vorschlag_workshop_id_workshop_id_fk",
+          "tableFrom": "vorschlag",
+          "tableTo": "workshop",
+          "columnsFrom": [
+            "workshop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "vorschlag_modul_id_modul_id_fk": {
+          "name": "vorschlag_modul_id_modul_id_fk",
+          "tableFrom": "vorschlag",
+          "tableTo": "modul",
+          "columnsFrom": [
+            "modul_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "vorschlag_erstellt_von_id_nutzer_id_fk": {
+          "name": "vorschlag_erstellt_von_id_nutzer_id_fk",
+          "tableFrom": "vorschlag",
+          "tableTo": "nutzer",
+          "columnsFrom": [
+            "erstellt_von_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "vorschlag_status_geaendert_von_id_nutzer_id_fk": {
+          "name": "vorschlag_status_geaendert_von_id_nutzer_id_fk",
+          "tableFrom": "vorschlag",
+          "tableTo": "nutzer",
+          "columnsFrom": [
+            "status_geaendert_von_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.checklisten_vorlage": {
+      "name": "checklisten_vorlage",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "checklisten_vorlage_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gilt_fuer_type": {
+          "name": "gilt_fuer_type",
+          "type": "workshop_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.checkpunkt": {
+      "name": "checkpunkt",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "checkpunkt_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "workshop_id": {
+          "name": "workshop_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vorlage_punkt_id": {
+          "name": "vorlage_punkt_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "system_schluessel": {
+          "name": "system_schluessel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "titel": {
+          "name": "titel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phase": {
+          "name": "phase",
+          "type": "workshop_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verantwortlich_user_id": {
+          "name": "verantwortlich_user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "faellig_am": {
+          "name": "faellig_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "checkpunkt_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'offen'"
+        },
+        "erledigt_via": {
+          "name": "erledigt_via",
+          "type": "erledigt_via",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "erledigt_von_id": {
+          "name": "erledigt_von_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "erledigt_am": {
+          "name": "erledigt_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "checkpunkt_workshop_vorlage_punkt_unique": {
+          "name": "checkpunkt_workshop_vorlage_punkt_unique",
+          "columns": [
+            {
+              "expression": "workshop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "vorlage_punkt_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "checkpunkt_workshop_system_schluessel_unique": {
+          "name": "checkpunkt_workshop_system_schluessel_unique",
+          "columns": [
+            {
+              "expression": "workshop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "system_schluessel",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "checkpunkt_workshop_id_workshop_id_fk": {
+          "name": "checkpunkt_workshop_id_workshop_id_fk",
+          "tableFrom": "checkpunkt",
+          "tableTo": "workshop",
+          "columnsFrom": [
+            "workshop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "checkpunkt_vorlage_punkt_id_checkpunkt_vorlage_id_fk": {
+          "name": "checkpunkt_vorlage_punkt_id_checkpunkt_vorlage_id_fk",
+          "tableFrom": "checkpunkt",
+          "tableTo": "checkpunkt_vorlage",
+          "columnsFrom": [
+            "vorlage_punkt_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "checkpunkt_verantwortlich_user_id_nutzer_id_fk": {
+          "name": "checkpunkt_verantwortlich_user_id_nutzer_id_fk",
+          "tableFrom": "checkpunkt",
+          "tableTo": "nutzer",
+          "columnsFrom": [
+            "verantwortlich_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "checkpunkt_erledigt_von_id_nutzer_id_fk": {
+          "name": "checkpunkt_erledigt_von_id_nutzer_id_fk",
+          "tableFrom": "checkpunkt",
+          "tableTo": "nutzer",
+          "columnsFrom": [
+            "erledigt_von_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.checkpunkt_vorlage": {
+      "name": "checkpunkt_vorlage",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "checkpunkt_vorlage_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "vorlage_id": {
+          "name": "vorlage_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "titel": {
+          "name": "titel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phase": {
+          "name": "phase",
+          "type": "workshop_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verantwortlich_rolle": {
+          "name": "verantwortlich_rolle",
+          "type": "verantwortlich_rolle",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'team'"
+        },
+        "faellig_offset_tage": {
+          "name": "faellig_offset_tage",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "auto_check_regel": {
+          "name": "auto_check_regel",
+          "type": "auto_check_regel",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nur_modus": {
+          "name": "nur_modus",
+          "type": "nur_modus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "link_feld": {
+          "name": "link_feld",
+          "type": "link_feld",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reihenfolge": {
+          "name": "reihenfolge",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "checkpunkt_vorlage_vorlage_id_checklisten_vorlage_id_fk": {
+          "name": "checkpunkt_vorlage_vorlage_id_checklisten_vorlage_id_fk",
+          "tableFrom": "checkpunkt_vorlage",
+          "tableTo": "checklisten_vorlage",
+          "columnsFrom": [
+            "vorlage_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kunde": {
+      "name": "kunde",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "kunde_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "firma": {
+          "name": "firma",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hubspot_id": {
+          "name": "hubspot_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sevdesk_id": {
+          "name": "sevdesk_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archiviert_am": {
+          "name": "archiviert_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.nutzer": {
+      "name": "nutzer",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "nutzer_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rolle": {
+          "name": "rolle",
+          "type": "nutzer_rolle",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entra_oid": {
+          "name": "entra_oid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "magic_link_token": {
+          "name": "magic_link_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "magic_link_expires_at": {
+          "name": "magic_link_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "nutzer_email_unique": {
+          "name": "nutzer_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        },
+        "nutzer_entra_oid_unique": {
+          "name": "nutzer_entra_oid_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "entra_oid"
+          ]
+        },
+        "nutzer_magic_link_token_unique": {
+          "name": "nutzer_magic_link_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "magic_link_token"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "nutzer_email_lowercase": {
+          "name": "nutzer_email_lowercase",
+          "value": "\"nutzer\".\"email\" = lower(\"nutzer\".\"email\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.trainer": {
+      "name": "trainer",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "trainer_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "extern": {
+          "name": "extern",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "aktiv": {
+          "name": "aktiv",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "nutzer_id": {
+          "name": "nutzer_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "trainer_nutzer_id_nutzer_id_fk": {
+          "name": "trainer_nutzer_id_nutzer_id_fk",
+          "tableFrom": "trainer",
+          "tableTo": "nutzer",
+          "columnsFrom": [
+            "nutzer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "trainer_email_unique": {
+          "name": "trainer_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        },
+        "trainer_nutzer_id_unique": {
+          "name": "trainer_nutzer_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "nutzer_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "trainer_email_lowercase": {
+          "name": "trainer_email_lowercase",
+          "value": "\"trainer\".\"email\" = lower(\"trainer\".\"email\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.workshop": {
+      "name": "workshop",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "workshop_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unternehmen_id": {
+          "name": "unternehmen_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ansprechperson": {
+          "name": "ansprechperson",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "workshop_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "format": {
+          "name": "format",
+          "type": "workshop_format",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modus": {
+          "name": "modus",
+          "type": "workshop_modus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ort": {
+          "name": "ort",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "workshop_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Vorabstimmung'"
+        },
+        "verantwortlich_intern_id": {
+          "name": "verantwortlich_intern_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "termin_1": {
+          "name": "termin_1",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "termin_1_ende": {
+          "name": "termin_1_ende",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "termin_2": {
+          "name": "termin_2",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "termin_2_ende": {
+          "name": "termin_2_ende",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "termin_fup": {
+          "name": "termin_fup",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "termin_fup_ende": {
+          "name": "termin_fup_ende",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ws_betrag": {
+          "name": "ws_betrag",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rechnung_status": {
+          "name": "rechnung_status",
+          "type": "rechnung_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'warten'"
+        },
+        "trainer_re": {
+          "name": "trainer_re",
+          "type": "trainer_re_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'offen'"
+        },
+        "sharepoint_url": {
+          "name": "sharepoint_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notion_project_url": {
+          "name": "notion_project_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "forms_vorab_url": {
+          "name": "forms_vorab_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "forms_feedback_url": {
+          "name": "forms_feedback_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sevdesk_id": {
+          "name": "sevdesk_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teams_meeting_url": {
+          "name": "teams_meeting_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verwendetes_slidedeck": {
+          "name": "verwendetes_slidedeck",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "interne_notizen": {
+          "name": "interne_notizen",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archiviert_am": {
+          "name": "archiviert_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "workshop_unternehmen_id_kunde_id_fk": {
+          "name": "workshop_unternehmen_id_kunde_id_fk",
+          "tableFrom": "workshop",
+          "tableTo": "kunde",
+          "columnsFrom": [
+            "unternehmen_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "workshop_verantwortlich_intern_id_nutzer_id_fk": {
+          "name": "workshop_verantwortlich_intern_id_nutzer_id_fk",
+          "tableFrom": "workshop",
+          "tableTo": "nutzer",
+          "columnsFrom": [
+            "verantwortlich_intern_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.zuweisung": {
+      "name": "zuweisung",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "zuweisung_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "workshop_id": {
+          "name": "workshop_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trainer_id": {
+          "name": "trainer_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rolle": {
+          "name": "rolle",
+          "type": "zuweisung_rolle",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'lead'"
+        },
+        "status": {
+          "name": "status",
+          "type": "zuweisung_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'angefragt'"
+        },
+        "anfrage_gesendet_am": {
+          "name": "anfrage_gesendet_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "infomail_gesendet_am": {
+          "name": "infomail_gesendet_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feedback_erinnerung_am": {
+          "name": "feedback_erinnerung_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "zuweisung_workshop_trainer_unique": {
+          "name": "zuweisung_workshop_trainer_unique",
+          "columns": [
+            {
+              "expression": "workshop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trainer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "zuweisung_workshop_id_workshop_id_fk": {
+          "name": "zuweisung_workshop_id_workshop_id_fk",
+          "tableFrom": "zuweisung",
+          "tableTo": "workshop",
+          "columnsFrom": [
+            "workshop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "zuweisung_trainer_id_trainer_id_fk": {
+          "name": "zuweisung_trainer_id_trainer_id_fk",
+          "tableFrom": "zuweisung",
+          "tableTo": "trainer",
+          "columnsFrom": [
+            "trainer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.modul": {
+      "name": "modul",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "modul_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sharepoint_url": {
+          "name": "sharepoint_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "beschreibung": {
+          "name": "beschreibung",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archiviert_am": {
+          "name": "archiviert_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.workshop_modul": {
+      "name": "workshop_modul",
+      "schema": "",
+      "columns": {
+        "workshop_id": {
+          "name": "workshop_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modul_id": {
+          "name": "modul_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "workshop_modul_workshop_id_workshop_id_fk": {
+          "name": "workshop_modul_workshop_id_workshop_id_fk",
+          "tableFrom": "workshop_modul",
+          "tableTo": "workshop",
+          "columnsFrom": [
+            "workshop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "workshop_modul_modul_id_modul_id_fk": {
+          "name": "workshop_modul_modul_id_modul_id_fk",
+          "tableFrom": "workshop_modul",
+          "tableTo": "modul",
+          "columnsFrom": [
+            "modul_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "workshop_modul_workshop_id_modul_id_pk": {
+          "name": "workshop_modul_workshop_id_modul_id_pk",
+          "columns": [
+            "workshop_id",
+            "modul_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.einstellung": {
+      "name": "einstellung",
+      "schema": "",
+      "columns": {
+        "schluessel": {
+          "name": "schluessel",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "wert": {
+          "name": "wert",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.job_lauf": {
+      "name": "job_lauf",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "job_lauf_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "job": {
+          "name": "job",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "erfolg": {
+          "name": "erfolg",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meldung": {
+          "name": "meldung",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kalender_eintrag": {
+      "name": "kalender_eintrag",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "kalender_eintrag_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "workshop_id": {
+          "name": "workshop_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "termin_art": {
+          "name": "termin_art",
+          "type": "kalender_termin_art",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "externe_id": {
+          "name": "externe_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "kalender_eintrag_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fingerabdruck": {
+          "name": "fingerabdruck",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teams_meeting_angefordert": {
+          "name": "teams_meeting_angefordert",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "kalender_eintrag_workshop_art_unique": {
+          "name": "kalender_eintrag_workshop_art_unique",
+          "columns": [
+            {
+              "expression": "workshop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "termin_art",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kalender_eintrag_workshop_id_workshop_id_fk": {
+          "name": "kalender_eintrag_workshop_id_workshop_id_fk",
+          "tableFrom": "kalender_eintrag",
+          "tableTo": "workshop",
+          "columnsFrom": [
+            "workshop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.postausgang": {
+      "name": "postausgang",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "postausgang_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "art": {
+          "name": "art",
+          "type": "postausgang_art",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "anlass": {
+          "name": "anlass",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "empfaenger": {
+          "name": "empfaenger",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "betreff": {
+          "name": "betreff",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kalender": {
+          "name": "kalender",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "workshop_id": {
+          "name": "workshop_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "postausgang_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fehler": {
+          "name": "fehler",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dedupe_key": {
+          "name": "dedupe_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "erzeugt_fuer": {
+          "name": "erzeugt_fuer",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "postausgang_dedupe_unique": {
+          "name": "postausgang_dedupe_unique",
+          "columns": [
+            {
+              "expression": "dedupe_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "postausgang_workshop_id_workshop_id_fk": {
+          "name": "postausgang_workshop_id_workshop_id_fk",
+          "tableFrom": "postausgang",
+          "tableTo": "workshop",
+          "columnsFrom": [
+            "workshop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.verlauf": {
+      "name": "verlauf",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "verlauf_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "entitaet": {
+          "name": "entitaet",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entitaet_id": {
+          "name": "entitaet_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workshop_id": {
+          "name": "workshop_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feld": {
+          "name": "feld",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alt": {
+          "name": "alt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "neu": {
+          "name": "neu",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nutzer_id": {
+          "name": "nutzer_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "verlauf_nutzer_id_nutzer_id_fk": {
+          "name": "verlauf_nutzer_id_nutzer_id_fk",
+          "tableFrom": "verlauf",
+          "tableTo": "nutzer",
+          "columnsFrom": [
+            "nutzer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.wiederkehrende_erinnerung": {
+      "name": "wiederkehrende_erinnerung",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "wiederkehrende_erinnerung_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "titel": {
+          "name": "titel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rhythmus": {
+          "name": "rhythmus",
+          "type": "rhythmus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "naechste_faelligkeit": {
+          "name": "naechste_faelligkeit",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "empfaenger_id": {
+          "name": "empfaenger_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "link": {
+          "name": "link",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notiz": {
+          "name": "notiz",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "aktiv": {
+          "name": "aktiv",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "zuletzt_erledigt_am": {
+          "name": "zuletzt_erledigt_am",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "wiederkehrende_erinnerung_empfaenger_id_nutzer_id_fk": {
+          "name": "wiederkehrende_erinnerung_empfaenger_id_nutzer_id_fk",
+          "tableFrom": "wiederkehrende_erinnerung",
+          "tableTo": "nutzer",
+          "columnsFrom": [
+            "empfaenger_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.vorschlag_status": {
+      "name": "vorschlag_status",
+      "schema": "public",
+      "values": [
+        "offen",
+        "umgesetzt",
+        "verworfen"
+      ]
+    },
+    "public.auto_check_regel": {
+      "name": "auto_check_regel",
+      "schema": "public",
+      "values": [
+        "termin_eingetragen",
+        "trainer_zugewiesen",
+        "praesentation_eingetragen",
+        "angebot_angenommen"
+      ]
+    },
+    "public.checkpunkt_status": {
+      "name": "checkpunkt_status",
+      "schema": "public",
+      "values": [
+        "offen",
+        "erledigt",
+        "uebersprungen"
+      ]
+    },
+    "public.erledigt_via": {
+      "name": "erledigt_via",
+      "schema": "public",
+      "values": [
+        "manuell",
+        "auto"
+      ]
+    },
+    "public.link_feld": {
+      "name": "link_feld",
+      "schema": "public",
+      "values": [
+        "forms_vorab",
+        "forms_feedback",
+        "notion"
+      ]
+    },
+    "public.nur_modus": {
+      "name": "nur_modus",
+      "schema": "public",
+      "values": [
+        "online",
+        "praesenz"
+      ]
+    },
+    "public.verantwortlich_rolle": {
+      "name": "verantwortlich_rolle",
+      "schema": "public",
+      "values": [
+        "team",
+        "trainer_lead",
+        "trainer_co"
+      ]
+    },
+    "public.nutzer_rolle": {
+      "name": "nutzer_rolle",
+      "schema": "public",
+      "values": [
+        "admin",
+        "team",
+        "trainer"
+      ]
+    },
+    "public.rechnung_status": {
+      "name": "rechnung_status",
+      "schema": "public",
+      "values": [
+        "warten",
+        "senden",
+        "gesendet"
+      ]
+    },
+    "public.trainer_re_status": {
+      "name": "trainer_re_status",
+      "schema": "public",
+      "values": [
+        "offen",
+        "überwiesen"
+      ]
+    },
+    "public.workshop_format": {
+      "name": "workshop_format",
+      "schema": "public",
+      "values": [
+        "dbrains academy",
+        "dbrains x SCCH",
+        "dbrains x FB",
+        "dbrains x Land OÖ"
+      ]
+    },
+    "public.workshop_modus": {
+      "name": "workshop_modus",
+      "schema": "public",
+      "values": [
+        "ONLINE",
+        "VOR ORT",
+        "SCCH",
+        "Webex"
+      ]
+    },
+    "public.workshop_status": {
+      "name": "workshop_status",
+      "schema": "public",
+      "values": [
+        "Vorabstimmung",
+        "Angebot",
+        "Vorbereitung",
+        "Durchführung",
+        "Nachbereitung",
+        "Done",
+        "On-Hold",
+        "Abgesagt"
+      ]
+    },
+    "public.workshop_type": {
+      "name": "workshop_type",
+      "schema": "public",
+      "values": [
+        "Lehrlinge",
+        "Beratung",
+        "Maßgeschneiderter Workshop",
+        "Agentic AI",
+        "Schule",
+        "Academy",
+        "Ideation",
+        "Keynote"
+      ]
+    },
+    "public.zuweisung_rolle": {
+      "name": "zuweisung_rolle",
+      "schema": "public",
+      "values": [
+        "lead",
+        "co",
+        "uebergabe_extern"
+      ]
+    },
+    "public.zuweisung_status": {
+      "name": "zuweisung_status",
+      "schema": "public",
+      "values": [
+        "angefragt",
+        "bestaetigt",
+        "abgesagt"
+      ]
+    },
+    "public.kalender_eintrag_status": {
+      "name": "kalender_eintrag_status",
+      "schema": "public",
+      "values": [
+        "vorlaeufig",
+        "fixiert",
+        "on_hold",
+        "abgesagt"
+      ]
+    },
+    "public.kalender_termin_art": {
+      "name": "kalender_termin_art",
+      "schema": "public",
+      "values": [
+        "termin1",
+        "termin2",
+        "fup"
+      ]
+    },
+    "public.postausgang_art": {
+      "name": "postausgang_art",
+      "schema": "public",
+      "values": [
+        "mail",
+        "kalender"
+      ]
+    },
+    "public.postausgang_status": {
+      "name": "postausgang_status",
+      "schema": "public",
+      "values": [
+        "vorschau",
+        "entwurf",
+        "gesendet",
+        "fehlgeschlagen",
+        "blockiert"
+      ]
+    },
+    "public.rhythmus": {
+      "name": "rhythmus",
+      "schema": "public",
+      "values": [
+        "woechentlich",
+        "monatlich",
+        "monatlich_erster_montag",
+        "quartalsweise",
+        "jaehrlich"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
